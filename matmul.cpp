@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#define NN 768
+#define NN 1024
 #include <string.h>
 #include <fstream>
 #include <iostream>
