@@ -195,5 +195,6 @@ int main(int argc, char* argv[]) {
     else printf("INCORRECTO\n");
   }
 
+  MPI_Finalize();
     
 }

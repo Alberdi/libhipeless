@@ -1,4 +1,4 @@
 libhipelss
 ==========
 
-High Performance Linear System Solver
+High Performance Linear Equations Systems Solver
