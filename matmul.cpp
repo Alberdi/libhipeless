@@ -108,9 +108,9 @@ int main(int argc, char *argv[]) {
 	local_work_size=(size_t *) malloc(2*sizeof(size_t));
 	
 	global_work_size[0]=N;
-	local_work_size[0]=1;
+	local_work_size[0]=16;
 	global_work_size[1]=N;
-	local_work_size[1]=1;	
+	local_work_size[1]=16;	
 	
 	cl_float *A=(cl_float *) malloc(N*N*sizeof(cl_float));
 	cl_float *B=(cl_float *) malloc(N*N*sizeof(cl_float));
