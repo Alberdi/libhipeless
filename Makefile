@@ -4,7 +4,7 @@
 FLAGS = -O3 -L /usr/lib64/OpenCL/vendors/intel/ -l OpenCL -I /usr/local/cuda/include/
 
 vec_sum: matmul.cpp
-	g++  $(FLAGS) -o matmul matmul.cpp
+	mpic++  $(FLAGS) -o matmul matmul.cpp
 
 clean:
 	rm matmul

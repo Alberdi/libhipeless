@@ -6,9 +6,13 @@
 
 #include <fstream>
 #include <iostream>
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define MPI_INIT_TAG 9876
+#define MPI_RESULT_TAG 6789
 
 //TODO se debería salir de la función con un error, no hacer un exit()
 inline void checkErr(cl_int errcode, const char* name) {
@@ -45,11 +49,13 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   global_work_size[1] = N;
   local_work_size[0] = 16;
   local_work_size[1] = 16;
+
   //TODO Me gustaría obviar las siguientes líneas
   cl_uint size_platforms;
   errcode = clGetPlatformIDs(0, NULL, &size_platforms);
   cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
   errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
+  checkErr(errcode, "clGetPlatformIDs");
   cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[1], 0};
   // Hasta aquí
 
@@ -122,29 +128,72 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 
 int main(int argc, char* argv[]) {
   int i, j;
-  int N = 1024;
+  int mpi_rank, mpi_size;
+  int N = 2048;
+  cl_float *A, *B, *C;
 
-  cl_float *A=(cl_float *) malloc(N*N*sizeof(cl_float));
-  cl_float *B=(cl_float *) malloc(N*N*sizeof(cl_float));
-  cl_float *C=(cl_float *) malloc(N*N*sizeof(cl_float));
-  
-  for(i=0;i<N;i++) {
-    for(j=0;j<N;j++){
-      A[i*N+j]=1;
-      if (i==j) B[i*N+j]=1; else B[i*N+j]=0;
+  MPI_Init(&argc, &argv);
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+  // TODO here be size to broadcast. Tomaré 2 durante un rato
+
+  // Matrix initialization
+  if(!mpi_rank) {
+    A = (cl_float *) malloc(N*N*sizeof(cl_float));
+    B = (cl_float *) malloc(N*N*sizeof(cl_float));
+    C = (cl_float *) malloc(N*N*sizeof(cl_float));
+
+    for(i=0;i<N;i++) {
+      for(j=0;j<N;j++){
+        A[i*N+j]=1;
+        if (i==j) B[i*N+j]=1; else B[i*N+j]=0;
+      }
     }
+  }
+  else {
+    // We divide by 2 because we only need half of each matrix
+    // TODO: NOT YET
+    A = (cl_float *) malloc(N*N*sizeof(cl_float));
+    B = (cl_float *) malloc(N*N*sizeof(cl_float));
+    C = (cl_float *) malloc(N*N*sizeof(cl_float));
   }
     
-  matrix_multiplication(C, A, B, N);
-
-  float x = 0.0;
-  for(i=0; i<N; i++) {
-    for(j=0; j<N; j++) {
-      x += A[i*N+j];
-    }
+  // Send & Recv stuff
+  // TODO ahora enviamos todo, no hacen falta muchos datos
+  if(!mpi_rank) {
+    // We hardcode the 1 as the number of the receiving processor
+    MPI_Send(A, N*N, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
+    MPI_Send(B, N*N, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
+  }
+  else {
+    MPI_Recv(A, N*N, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(B, N*N, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
 
-  if(x==(N*N)) printf("CORRECTO\n");
-  else printf("INCORRECTO\n");
+  // TODO we calculate all the results in each node, we shouldn't
+  if(mpi_rank) matrix_multiplication(C, A, B, N);
+
+  // Recv & Send result
+  if(!mpi_rank) {
+    MPI_Recv(C, N*N, MPI_FLOAT, 1, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  }
+  else {
+    // TODO There is only need to send the second half of the C matrix. We don't do  it yet
+    MPI_Send(C, N*N, MPI_FLOAT, 0, MPI_RESULT_TAG, MPI_COMM_WORLD);
+  }
+
+  // Result checking
+  if(!mpi_rank) {
+    float x = 0.0;
+    for(i=0; i<N; i++) {
+      for(j=0; j<N; j++) {
+        x += A[i*N+j];
+      }
+    }
+    if(x==(N*N)) printf("CORRECTO\n");
+    else printf("INCORRECTO\n");
+  }
+
     
 }
