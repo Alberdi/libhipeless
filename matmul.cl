@@ -13,8 +13,8 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
   int by = get_group_id(1);
 
   // Thread index
-  int tx = get_local_id(0);
-  int ty = get_local_id(1);
+	int tx = get_local_id(0);
+	int ty = get_local_id(1);
 
   // Index of the first sub-matrix of A processed by the block
   int aBegin = wA * BLOCK_SIZE * by;
