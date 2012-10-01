@@ -3,9 +3,7 @@
 #define BLOCK_SIZE 16
 
 // TODO Cambié las letras desde la definición anterior, es confuso (ahora C es la que se escribe)
-__kernel void matmul(__global float *C, __global const float *A, __global const float *B, const uint N) {
-  int wA = N;
-  int wB = N;
+__kernel void matmul(__global float *C, __global const float *A, __global const float *B, const uint colsA, const uint colsB) {
   float Csub = 0;
 
   // Block index
@@ -17,10 +15,10 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
 	int ty = get_local_id(1);
 
   // Index of the first sub-matrix of A processed by the block
-  int aBegin = wA * BLOCK_SIZE * by;
+  int aBegin = colsA * BLOCK_SIZE * by;
  
   // Index of the last sub-matrix of A processed by the block
-  int aEnd   = aBegin + wA - 1;
+  int aEnd   = aBegin + colsA - 1;
  
   // Step size used to iterate through the sub-matrices of A
   int aStep  = BLOCK_SIZE;
@@ -29,7 +27,7 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
   int bBegin = BLOCK_SIZE * bx;
  
   // Step size used to iterate through the sub-matrices of B
-  int bStep  = BLOCK_SIZE * wB;
+  int bStep  = BLOCK_SIZE * colsB;
 
 
   for (int a = aBegin, b = bBegin; a <= aEnd; a += aStep, b += bStep) {
@@ -44,8 +42,8 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
     // Load the matrices from global memory
     // to local memory; each thread loads
     // one element of each matrix
-    As[ty][tx] = A[a + wA * ty + tx];
-    Bs[ty][tx] = B[b + wB * ty + tx];
+    As[ty][tx] = A[a + colsA * ty + tx];
+    Bs[ty][tx] = B[b + colsB * ty + tx];
 
     // Synchronize to make sure the matrices 
     // are loaded
@@ -66,7 +64,7 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
 
   // Write the block sub-matrix to device memory;
   // each thread writes one element
-  int c = wB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
-  C[c + wB * ty + tx] = Csub;
+  int c = colsB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
+  C[c + colsB * ty + tx] = Csub;
 
 }

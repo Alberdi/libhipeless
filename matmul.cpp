@@ -31,7 +31,8 @@ const char* readKernelFromSource(const char* source) {
 
 //TODO esa N deberían ser las diferentes longitudes (wA, hA y hB (wB=hA))
 // C = A*B
-int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_uint N) {
+int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB) {
+  if(colsA != rowsB) { printf("Multiplication not defined for those matrices\n"); return -1; }
   cl_int errcode;
   cl_context context;
   cl_device_id *devices;
@@ -45,8 +46,8 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   size_t global_work_size[2];
   size_t local_work_size[2];
 
-  global_work_size[0] = N;
-  global_work_size[1] = N;
+  global_work_size[0] = rowsA;
+  global_work_size[1] = colsB;
   local_work_size[0] = 16;
   local_work_size[1] = 16;
 
@@ -71,19 +72,19 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   command_queue = clCreateCommandQueue(context, devices[0], CL_QUEUE_PROFILING_ENABLE, &errcode);
   checkErr(errcode, "clCreateCommandQueue");
 
-  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, N*N*sizeof(cl_float), NULL, &errcode);
+  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, rowsA*colsA*sizeof(cl_float), NULL, &errcode);
   checkErr(errcode, "clCreateBuffer");
 
-  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, N*N*sizeof(cl_float), NULL, &errcode);
+  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, rowsB*colsB*sizeof(cl_float), NULL, &errcode);
   checkErr(errcode, "clCreateBuffer");
 
-  memC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, N*N*sizeof(cl_float), NULL, &errcode);
+  memC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, rowsA*colsB*sizeof(cl_float), NULL, &errcode);
   checkErr(errcode, "clCreateBuffer");
 
-  errcode = clEnqueueWriteBuffer(command_queue, memA, CL_TRUE, 0, N*N*sizeof(cl_float), A, 0, NULL, NULL);
+  errcode = clEnqueueWriteBuffer(command_queue, memA, CL_TRUE, 0, rowsA*colsA*sizeof(cl_float), A, 0, NULL, NULL);
   checkErr(errcode, "clEnqueueWriteBuffer");
 
-  errcode = clEnqueueWriteBuffer(command_queue, memB, CL_TRUE, 0, N*N*sizeof(cl_float), B, 0, NULL, NULL);
+  errcode = clEnqueueWriteBuffer(command_queue, memB, CL_TRUE, 0, rowsB*colsB*sizeof(cl_float), B, 0, NULL, NULL);
   checkErr(errcode, "clEnqueueWriteBuffer");
 
   source = readKernelFromSource("./matmul.cl");
@@ -106,7 +107,10 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   errcode = clSetKernelArg(kernel, 2, sizeof(cl_mem), &memB);
   checkErr(errcode, "clSetKernelArg");
 
-  errcode = clSetKernelArg(kernel, 3, sizeof(cl_uint), &N);
+  errcode = clSetKernelArg(kernel, 3, sizeof(cl_uint), &colsA);
+  checkErr(errcode, "clSetKernelArg");
+
+  errcode = clSetKernelArg(kernel, 4, sizeof(cl_uint), &colsB);
   checkErr(errcode, "clSetKernelArg");
 
   errcode = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
@@ -114,7 +118,7 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 
   clFinish(command_queue);
 
-  errcode = clEnqueueReadBuffer(command_queue, memC, CL_TRUE, 0, N*N*sizeof(cl_float), C, 0, NULL, NULL);
+  errcode = clEnqueueReadBuffer(command_queue, memC, CL_TRUE, 0, rowsA*colsB*sizeof(cl_float), C, 0, NULL, NULL);
   checkErr(errcode, "clEnqueueReadBuffer");
 
   clFinish(command_queue);
@@ -129,70 +133,73 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 int main(int argc, char* argv[]) {
   int i, j;
   int mpi_rank, mpi_size;
-  int N = 2048;
+  int rowsA = 2048;
+  int colsA = 2048;
+  int rowsB = 2048;
+  int colsB = 2048;
   cl_float *A, *B, *C;
 
   MPI_Init(&argc, &argv);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-  // TODO here be size to broadcast. Tomaré 2 durante un rato
+  // TODO here be size to broadcast; we'll assume 2 for now
 
   // Matrix initialization
   if(!mpi_rank) {
-    A = (cl_float *) malloc(N*N*sizeof(cl_float));
-    B = (cl_float *) malloc(N*N*sizeof(cl_float));
-    C = (cl_float *) malloc(N*N*sizeof(cl_float));
+    A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float));
+    B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
+    C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
 
-    for(i=0;i<N;i++) {
-      for(j=0;j<N;j++){
-        A[i*N+j]=1;
-        if (i==j) B[i*N+j]=1; else B[i*N+j]=0;
+    for(i=0;i<rowsA;i++) {
+      for(j=0;j<colsA;j++){
+        A[i*rowsA+j]=1;
+        if (i==j) B[i*rowsA+j]=1; else B[i*rowsA+j]=0;
       }
     }
   }
   else {
     // We divide by 2 because we only need half of each matrix
     // TODO: NOT YET
-    A = (cl_float *) malloc(N*N*sizeof(cl_float));
-    B = (cl_float *) malloc(N*N*sizeof(cl_float));
-    C = (cl_float *) malloc(N*N*sizeof(cl_float));
+    A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float));
+    B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
+    C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
   }
     
   // Send & Recv stuff
   // TODO ahora enviamos todo, no hacen falta muchos datos
   if(!mpi_rank) {
     // We hardcode the 1 as the number of the receiving processor
-    MPI_Send(A, N*N, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
-    MPI_Send(B, N*N, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
+    MPI_Send(A, rowsA*colsA, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
+    MPI_Send(B, rowsB*colsB, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
   }
   else {
-    MPI_Recv(A, N*N, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Recv(B, N*N, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(A, rowsA*colsA, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(B, rowsB*colsB, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
 
   // TODO we calculate all the results in each node, we shouldn't
-  if(mpi_rank) matrix_multiplication(C, A, B, N);
+  if(mpi_rank) matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB);
 
   // Recv & Send result
   if(!mpi_rank) {
-    MPI_Recv(C, N*N, MPI_FLOAT, 1, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(C, rowsA*colsB, MPI_FLOAT, 1, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
   else {
     // TODO There is only need to send the second half of the C matrix. We don't do  it yet
-    MPI_Send(C, N*N, MPI_FLOAT, 0, MPI_RESULT_TAG, MPI_COMM_WORLD);
+    MPI_Send(C, rowsA*colsB, MPI_FLOAT, 0, MPI_RESULT_TAG, MPI_COMM_WORLD);
   }
 
   // Result checking
   if(!mpi_rank) {
     float x = 0.0;
-    for(i=0; i<N; i++) {
-      for(j=0; j<N; j++) {
-        x += A[i*N+j];
+    for(i=0; i<rowsA; i++) {
+      for(j=0; j<colsB; j++) {
+        x += C[i*rowsA+j];
       }
     }
-    if(x==(N*N)) printf("CORRECTO\n");
-    else printf("INCORRECTO\n");
+    if(x==colsA*rowsA) printf("CORRECTO\n");
+    else printf("INCORRECTO: %f\n", x);
   }
 
   MPI_Finalize();
