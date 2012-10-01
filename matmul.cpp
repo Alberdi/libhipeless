@@ -14,6 +14,16 @@
 #define MPI_INIT_TAG 9876
 #define MPI_RESULT_TAG 6789
 
+void matrix_print(cl_float *A, cl_uint rowsA, cl_uint colsA) {
+  int i, j;
+  for(i=0; i<rowsA; i++) {
+    for(j=0; j<colsA; j++) {
+      printf("%d ", (int)A[i*colsA+j]);
+    }
+    printf("\n");
+  }
+}
+
 //TODO se debería salir de la función con un error, no hacer un exit()
 inline void checkErr(cl_int errcode, const char* name) {
   if(errcode != CL_SUCCESS) {
@@ -134,8 +144,8 @@ int main(int argc, char* argv[]) {
   int i, j;
   int mpi_rank, mpi_size;
   int rowsA = 2048;
-  int colsA = 2048;
-  int rowsB = 2048;
+  int colsA = 1024;
+  int rowsB = 1024;
   int colsB = 2048;
   cl_float *A, *B, *C;
 
@@ -151,12 +161,14 @@ int main(int argc, char* argv[]) {
     B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
     C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
 
-    for(i=0;i<rowsA;i++) {
-      for(j=0;j<colsA;j++){
-        A[i*rowsA+j]=1;
-        if (i==j) B[i*rowsA+j]=1; else B[i*rowsA+j]=0;
-      }
-    }
+    for(i=0;i<rowsA;i++)
+      for(j=0;j<colsA;j++)
+        A[i*colsA+j]=1;
+
+    for(i=0;i<rowsB;i++)
+      for(j=0;j<colsB;j++)
+        if(i==j) B[i*colsB+j]=1; else B[i*colsB+j]=0;
+
   }
   else {
     // We divide by 2 because we only need half of each matrix
@@ -165,7 +177,7 @@ int main(int argc, char* argv[]) {
     B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
     C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
   }
-    
+
   // Send & Recv stuff
   // TODO ahora enviamos todo, no hacen falta muchos datos
   if(!mpi_rank) {
@@ -179,7 +191,7 @@ int main(int argc, char* argv[]) {
   }
 
   // TODO we calculate all the results in each node, we shouldn't
-  if(mpi_rank) matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB);
+  if(mpi_rank) { matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB); }
 
   // Recv & Send result
   if(!mpi_rank) {
@@ -195,13 +207,14 @@ int main(int argc, char* argv[]) {
     float x = 0.0;
     for(i=0; i<rowsA; i++) {
       for(j=0; j<colsB; j++) {
-        x += C[i*rowsA+j];
+        x += C[i*colsB+j];
       }
     }
-    if(x==colsA*rowsA) printf("CORRECTO\n");
-    else printf("INCORRECTO: %f\n", x);
+    if(x==colsA*rowsA) printf("CORRECTO (%f)\n", x);
+    else printf("INCORRECTO: %f (%d)\n", x, colsA*rowsA);
+ 
+  //matrix_print(C, rowsA, colsB);
   }
-
   MPI_Finalize();
     
 }

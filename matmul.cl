@@ -1,8 +1,10 @@
+//TODO remove for final version
+//#pragma OPENCL EXTENSION cl_intel_printf : enable
+
 // TODO Puede no ser del todo correcto
 // Thread block size
 #define BLOCK_SIZE 16
 
-// TODO Cambié las letras desde la definición anterior, es confuso (ahora C es la que se escribe)
 __kernel void matmul(__global float *C, __global const float *A, __global const float *B, const uint colsA, const uint colsB) {
   float Csub = 0;
 
@@ -49,22 +51,23 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
     // are loaded
     barrier(CLK_LOCAL_MEM_FENCE);
 
+//    printf("a=%d, b=%d, Bs[15][0]=%f (%d)\n", a, b, Bs[15][0], b+colsB*15);
     // Multiply the two matrices together;
     // each thread computes one element
     // of the block sub-matrix
-    for (int k = 0; k < BLOCK_SIZE; ++k)
+    for (int k = 0; k < BLOCK_SIZE; k++) {
       Csub += As[ty][k] * Bs[k][tx];
+//      printf("Csub= %f = A*B = %f * % f (Bs[%d][%d])\n", Csub, As[ty][k], Bs[k][tx], k, tx);
+    }
 
     // Synchronize to make sure that the preceding
     // computation is done before loading two new
     // sub-matrices of A and B in the next iteration
     barrier(CLK_LOCAL_MEM_FENCE);
-
-}
+  }
 
   // Write the block sub-matrix to device memory;
   // each thread writes one element
   int c = colsB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
   C[c + colsB * ty + tx] = Csub;
-
 }
