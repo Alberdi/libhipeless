@@ -47,7 +47,7 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   size_t local_work_size[2];
 
   global_work_size[0] = rowsA;
-  global_work_size[1] = colsB;
+  global_work_size[1] = colsA;
   local_work_size[0] = 16;
   local_work_size[1] = 16;
 
@@ -133,10 +133,7 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 int main(int argc, char* argv[]) {
   int i, j;
   int mpi_rank, mpi_size;
-  int rowsA = 2048;
-  int colsA = 2048;
-  int rowsB = 2048;
-  int colsB = 2048;
+  int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
   cl_float *A, *B, *C;
 
   MPI_Init(&argc, &argv);
@@ -151,12 +148,14 @@ int main(int argc, char* argv[]) {
     B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
     C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
 
-    for(i=0;i<rowsA;i++) {
-      for(j=0;j<colsA;j++){
-        A[i*rowsA+j]=1;
-        if (i==j) B[i*rowsA+j]=1; else B[i*rowsA+j]=0;
-      }
-    }
+    for(i=0;i<rowsA;i++)
+      for(j=0;j<colsA;j++)
+        A[i*colsA+j]=1;
+
+    for(i=0;i<rowsB;i++)
+      for(j=0;j<colsB;j++)
+        B[i*colsB+j] = i==j ? 1 : 0;
+
   }
   else {
     // We divide by 2 because we only need half of each matrix
@@ -195,7 +194,7 @@ int main(int argc, char* argv[]) {
     float x = 0.0;
     for(i=0; i<rowsA; i++) {
       for(j=0; j<colsB; j++) {
-        x += C[i*rowsA+j];
+        x += C[i*colsB+j];
       }
     }
     if(x==colsA*rowsA) printf("CORRECTO\n");
