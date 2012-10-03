@@ -14,6 +14,16 @@
 #define MPI_INIT_TAG 9876
 #define MPI_RESULT_TAG 6789
 
+void matrix_print(cl_float *A, cl_uint rowsA, cl_uint colsA) {
+  int i, j;
+  for(i=0; i<rowsA; i++) {
+    for(j=0; j<colsA; j++) {
+      printf("%d ", (int)A[i*colsA+j]);
+    }
+    printf("\n");
+  }
+}
+
 //TODO se debería salir de la función con un error, no hacer un exit()
 inline void checkErr(cl_int errcode, const char* name) {
   if(errcode != CL_SUCCESS) {
@@ -29,7 +39,6 @@ const char* readKernelFromSource(const char* source) {
     return sourceString.c_str();
 }
 
-//TODO esa N deberían ser las diferentes longitudes (wA, hA y hB (wB=hA))
 // C = A*B
 int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB) {
   if(colsA != rowsB) { printf("Multiplication not defined for those matrices\n"); return -1; }
@@ -155,7 +164,6 @@ int main(int argc, char* argv[]) {
     for(i=0;i<rowsB;i++)
       for(j=0;j<colsB;j++)
         B[i*colsB+j] = i==j ? 1 : 0;
-
   }
   else {
     // We divide by 2 because we only need half of each matrix
@@ -164,7 +172,7 @@ int main(int argc, char* argv[]) {
     B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
     C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
   }
-    
+
   // Send & Recv stuff
   // TODO ahora enviamos todo, no hacen falta muchos datos
   if(!mpi_rank) {
@@ -177,15 +185,14 @@ int main(int argc, char* argv[]) {
     MPI_Recv(B, rowsB*colsB, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
 
-  // TODO we calculate all the results in each node, we shouldn't
-  if(mpi_rank) matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB);
+  if(mpi_rank) { matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB); }
 
   // Recv & Send result
   if(!mpi_rank) {
     MPI_Recv(C, rowsA*colsB, MPI_FLOAT, 1, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
   else {
-    // TODO There is only need to send the second half of the C matrix. We don't do  it yet
+    // TODO There will be only need to send the second half of the C matrix.
     MPI_Send(C, rowsA*colsB, MPI_FLOAT, 0, MPI_RESULT_TAG, MPI_COMM_WORLD);
   }
 
@@ -197,10 +204,11 @@ int main(int argc, char* argv[]) {
         x += C[i*colsB+j];
       }
     }
-    if(x==colsA*rowsA) printf("CORRECTO\n");
-    else printf("INCORRECTO: %f\n", x);
+    if(x==colsA*rowsA) printf("CORRECTO (%f)\n", x);
+    else printf("INCORRECTO: %f (%d)\n", x, colsA*rowsA);
+ 
+  //matrix_print(C, rowsA, colsB);
   }
-
   MPI_Finalize();
     
 }
