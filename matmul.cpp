@@ -142,9 +142,9 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 int main(int argc, char* argv[]) {
   int i, j;
   int mpi_rank, mpi_size;
-  //int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
+  int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
   //int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
-  int rowsA = 64, colsA = 64, rowsB = 64, colsB = 64;
+  //int rowsA = 64, colsA = 64, rowsB = 64, colsB = 64;
   cl_float *A, *B, *C;
   MPI_Datatype custom_datatype;
 
@@ -171,25 +171,18 @@ int main(int argc, char* argv[]) {
   else {
     // We divide by mpi_size because we only need a fraction of each matrix
     A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float)/mpi_size);
-    B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float)/mpi_size);
+    B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
     C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float)/mpi_size);
   }
-
   // Send & Recv stuff
   if(!mpi_rank) {
-    // We need a datatype to pack the needed elements of B
-    MPI_Type_vector(rowsB, colsB/mpi_size, colsB, MPI_FLOAT, &custom_datatype);
-    MPI_Type_commit(&custom_datatype);
-
     // We hardcode the 1 as the number of the receiving processor
     MPI_Send(&A[rowsA*colsA/mpi_size], rowsA*colsA/mpi_size, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
-    MPI_Send(&B[colsB/mpi_size], 1, custom_datatype, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
-
-    MPI_Type_free(&custom_datatype);
+    MPI_Send(B, rowsB*colsB, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
   }
   else {
     MPI_Recv(A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Recv(B, rowsB*colsB/mpi_size, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(B, rowsB*colsB, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
 
   // Multiplication
@@ -198,20 +191,13 @@ int main(int argc, char* argv[]) {
     matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
   }
   else {
-    matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB/mpi_size);
-    //matrix_print(C, rowsA/mpi_size, colsB);
+    matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
   }
-
 
   // Recv & Send result
   if(!mpi_rank) {
     // We need a datatype to unpack the needed elements of C
-    MPI_Type_vector(rowsA, colsB/mpi_size, colsB, MPI_FLOAT, &custom_datatype);
-    MPI_Type_commit(&custom_datatype);
-
-    MPI_Recv(&C[colsB/mpi_size], 1, custom_datatype, 1, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-    MPI_Type_free(&custom_datatype);
+    MPI_Recv(&C[rowsA*colsB/mpi_size], rowsA*colsB/mpi_size, MPI_FLOAT, 1, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
   else {
     MPI_Send(C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_RESULT_TAG, MPI_COMM_WORLD);
