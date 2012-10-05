@@ -142,17 +142,15 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 int main(int argc, char* argv[]) {
   int i, j;
   int mpi_rank, mpi_size;
-  int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
-  //int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
+  //int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
+  int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
   //int rowsA = 64, colsA = 64, rowsB = 64, colsB = 64;
   cl_float *A, *B, *C;
-  MPI_Datatype custom_datatype;
 
   MPI_Init(&argc, &argv);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-  // TODO we asume mpi_size = 2 for a while
 
   // Matrix allocation and initialization
   if(!mpi_rank) {
@@ -169,16 +167,20 @@ int main(int argc, char* argv[]) {
         B[i*colsB+j] = i==j ? 1 : 0;
   }
   else {
-    // We divide by mpi_size because we only need a fraction of each matrix
+    // We divide by mpi_size because we only need a fraction of A and C
     A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float)/mpi_size);
     B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
     C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float)/mpi_size);
   }
+
   // Send & Recv stuff
+  // Each MPI node needs rowsA/mpi_size consecutive rows of A and B in full
   if(!mpi_rank) {
-    // We hardcode the 1 as the number of the receiving processor
-    MPI_Send(&A[rowsA*colsA/mpi_size], rowsA*colsA/mpi_size, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
-    MPI_Send(B, rowsB*colsB, MPI_FLOAT, 1, MPI_INIT_TAG, MPI_COMM_WORLD);
+    for(i=1; i<mpi_size; i++) {
+      MPI_Send(&A[i*rowsA*colsA/mpi_size], rowsA*colsA/mpi_size, MPI_FLOAT, i, MPI_INIT_TAG, MPI_COMM_WORLD);
+      //TODO we can broadcast this
+      MPI_Send(B, rowsB*colsB, MPI_FLOAT, i, MPI_INIT_TAG, MPI_COMM_WORLD);
+    }
   }
   else {
     MPI_Recv(A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -187,7 +189,6 @@ int main(int argc, char* argv[]) {
 
   // Multiplication
   if(!mpi_rank) {
-    // This seems to work; I'm not that sure
     matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
   }
   else {
@@ -197,7 +198,8 @@ int main(int argc, char* argv[]) {
   // Recv & Send result
   if(!mpi_rank) {
     // We need a datatype to unpack the needed elements of C
-    MPI_Recv(&C[rowsA*colsB/mpi_size], rowsA*colsB/mpi_size, MPI_FLOAT, 1, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    for(i=1; i<mpi_size; i++)
+      MPI_Recv(&C[i*rowsA*colsB/mpi_size], rowsA*colsB/mpi_size, MPI_FLOAT, i, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
   else {
     MPI_Send(C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_RESULT_TAG, MPI_COMM_WORLD);
