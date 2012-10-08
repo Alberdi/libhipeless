@@ -11,8 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MPI_INIT_TAG 9876
-#define MPI_RESULT_TAG 6789
+#define BLOCK_SIZE 16
 
 void matrix_print(cl_float *A, cl_uint rowsA, cl_uint colsA) {
   int i, j;
@@ -57,8 +56,8 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 
   global_work_size[0] = rowsA;
   global_work_size[1] = colsB;
-  local_work_size[0] = 16;
-  local_work_size[1] = 16;
+  local_work_size[0] = BLOCK_SIZE;
+  local_work_size[1] = BLOCK_SIZE;
 
   //TODO Me gustaría obviar las siguientes líneas
   cl_uint size_platforms;
@@ -142,15 +141,23 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 int main(int argc, char* argv[]) {
   int i, j;
   int mpi_rank, mpi_size;
-  //int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
-  int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
-  //int rowsA = 64, colsA = 64, rowsB = 64, colsB = 64;
+  int rowsA = 1025, colsA = 512, rowsB = 512, colsB = 2048;
+  int prows, mrows, fill;
   cl_float *A, *B, *C;
 
   MPI_Init(&argc, &argv);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+  // Calculate the rows of A to be multiplied by each node
+  // prows = processor rows (for each one other than the root)
+  prows = rowsA/mpi_size - ((rowsA/mpi_size) % BLOCK_SIZE);
+  // mrows = master rows (root)
+  mrows = rowsA - prows*(mpi_size-1);
+  // fill = rows that must be added to the root to be a multiple of 16
+  if(mrows % BLOCK_SIZE != 0)
+    fill = BLOCK_SIZE - (mrows % BLOCK_SIZE);
 
   // Matrix allocation and initialization
   if(!mpi_rank) {
@@ -168,38 +175,40 @@ int main(int argc, char* argv[]) {
   }
   else {
     // We divide by mpi_size because we only need a fraction of A and C
-    A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float)/mpi_size);
+    A = (cl_float *) malloc(prows*colsA*sizeof(cl_float));
     B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
-    C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float)/mpi_size);
+    C = (cl_float *) malloc(prows*colsB*sizeof(cl_float));
   }
+
+  // Send & Recv A, each node needs rowsA/mpi_size rows of A
+  MPI_Scatter(A, prows*colsA, MPI_FLOAT, A, prows*colsA, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
   // Send B in full to each node
   MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-  // Send & Recv A, each node needs rowsA/mpi_size rows of A
-  MPI_Scatter(A, rowsA*colsA/mpi_size, MPI_FLOAT, A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-  // Do the partical multiplication
-  matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
+  // Do the partial multiplication
+  matrix_multiplication(C, A, B, mpi_rank ? prows : mrows+fill, colsA, rowsB, colsB);
 
   // Recv & Send C
-  MPI_Gather(C, rowsA*colsB/mpi_size, MPI_FLOAT, C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  if(!mpi_rank)
+    for(i=1; i<mpi_size; i++)
+      MPI_Recv(&C[(mrows+prows*(i-1))*colsB], prows*colsB, MPI_FLOAT, i, 6541, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  else
+    MPI_Send(C, prows*colsB, MPI_FLOAT, 0, 6541, MPI_COMM_WORLD);
+  //MPI_Gather(C, mpi_rank ? prows*colsB : mrows*colsB, MPI_FLOAT, C, mrows*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
  // Result checking
   if(!mpi_rank) {
     float x = 0.0;
-    for(i=0; i<rowsA; i++) {
-      for(j=0; j<colsB; j++) {
+    for(i=0; i<rowsA; i++)
+      for(j=0; j<colsB; j++)
         x += C[i*colsB+j];
-      }
-    }
+
     // TODO This check is not correct, but the results seem to be correct always
     // (checked with octave)
     // Tip to fix: sometimes it is rowsA*colsA and sometimes rowsA*colsB
     if(x==rowsA*colsA || x==rowsA*colsB) printf("CORRECTO (%f)\n", x);
     else printf("INCORRECTO: %f (%d, %d)\n", x, rowsA*colsA, rowsA*colsB);
- 
-  //matrix_print(C, rowsA, colsB);
   }
   MPI_Finalize();
     
