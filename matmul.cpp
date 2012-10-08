@@ -176,17 +176,10 @@ int main(int argc, char* argv[]) {
   // Send B in full to each node
   MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-  // Send & Recv stuff
-  // Each MPI node needs rowsA/mpi_size consecutive rows of A
-  if(!mpi_rank) {
-    for(i=1; i<mpi_size; i++) {
-      MPI_Send(&A[i*rowsA*colsA/mpi_size], rowsA*colsA/mpi_size, MPI_FLOAT, i, MPI_INIT_TAG, MPI_COMM_WORLD);
-    }
-  }
-  else {
-    MPI_Recv(A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  }
+  // Send & Recv A, each node needs rowsA/mpi_size rows of A
+  MPI_Scatter(A, rowsA*colsA/mpi_size, MPI_FLOAT, A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
+  // Do the partical multiplication
   matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
 
   // Recv & Send C
