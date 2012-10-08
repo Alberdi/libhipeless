@@ -173,39 +173,26 @@ int main(int argc, char* argv[]) {
     C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float)/mpi_size);
   }
 
+  // Send B in full to each node
+  MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
   // Send & Recv stuff
-  // Each MPI node needs rowsA/mpi_size consecutive rows of A and B in full
+  // Each MPI node needs rowsA/mpi_size consecutive rows of A
   if(!mpi_rank) {
     for(i=1; i<mpi_size; i++) {
       MPI_Send(&A[i*rowsA*colsA/mpi_size], rowsA*colsA/mpi_size, MPI_FLOAT, i, MPI_INIT_TAG, MPI_COMM_WORLD);
-      //TODO we can broadcast this
-      MPI_Send(B, rowsB*colsB, MPI_FLOAT, i, MPI_INIT_TAG, MPI_COMM_WORLD);
     }
   }
   else {
     MPI_Recv(A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Recv(B, rowsB*colsB, MPI_FLOAT, 0, MPI_INIT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
 
-  // Multiplication
-  if(!mpi_rank) {
-    matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
-  }
-  else {
-    matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
-  }
+  matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
 
-  // Recv & Send result
-  if(!mpi_rank) {
-    // We need a datatype to unpack the needed elements of C
-    for(i=1; i<mpi_size; i++)
-      MPI_Recv(&C[i*rowsA*colsB/mpi_size], rowsA*colsB/mpi_size, MPI_FLOAT, i, MPI_RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  }
-  else {
-    MPI_Send(C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_RESULT_TAG, MPI_COMM_WORLD);
-  }
+  // Recv & Send C
+  MPI_Gather(C, rowsA*colsB/mpi_size, MPI_FLOAT, C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-  // Result checking
+ // Result checking
   if(!mpi_rank) {
     float x = 0.0;
     for(i=0; i<rowsA; i++) {
