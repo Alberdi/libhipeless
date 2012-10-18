@@ -6,7 +6,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -141,66 +140,39 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 
 int main(int argc, char* argv[]) {
   int i, j;
-  int mpi_rank, mpi_size;
-  //int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
-  int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
-  //int rowsA = 64, colsA = 64, rowsB = 64, colsB = 64;
+  int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
+  //int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
   cl_float *A, *B, *C;
 
-  MPI_Init(&argc, &argv);
+ // Matrix allocation and initialization
+  A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float));
+  B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
+  C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+  for(i=0;i<rowsA;i++)
+    for(j=0;j<colsA;j++)
+      A[i*colsA+j]=1;
 
-  // Matrix allocation and initialization
-  if(!mpi_rank) {
-    A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float));
-    B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
-    C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
+  for(i=0;i<rowsB;i++)
+    for(j=0;j<colsB;j++)
+      B[i*colsB+j] = i==j ? 1 : 0;
 
-    for(i=0;i<rowsA;i++)
-      for(j=0;j<colsA;j++)
-        A[i*colsA+j]=1;
+  // Do the partial multiplication
+  matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB);
 
-    for(i=0;i<rowsB;i++)
-      for(j=0;j<colsB;j++)
-        B[i*colsB+j] = i==j ? 1 : 0;
-  }
-  else {
-    // We divide by mpi_size because we only need a fraction of A and C
-    A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float)/mpi_size);
-    B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
-    C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float)/mpi_size);
-  }
-
-  // Send B in full to each node
-  MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-  // Send & Recv A, each node needs rowsA/mpi_size rows of A
-  MPI_Scatter(A, rowsA*colsA/mpi_size, MPI_FLOAT, A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-  // Do the partical multiplication
-  matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
-
-  // Recv & Send C
-  MPI_Gather(C, rowsA*colsB/mpi_size, MPI_FLOAT, C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
- // Result checking
-  if(!mpi_rank) {
-    float x = 0.0;
-    for(i=0; i<rowsA; i++) {
-      for(j=0; j<colsB; j++) {
-        x += C[i*colsB+j];
-      }
+  float x = 0.0;
+  for(i=0; i<rowsA; i++) {
+    for(j=0; j<colsB; j++) {
+      x += C[i*colsB+j];
     }
-    // TODO This check is not correct, but the results seem to be correct always
-    // (checked with octave)
-    // Tip to fix: sometimes it is rowsA*colsA and sometimes rowsA*colsB
-    if(x==rowsA*colsA || x==rowsA*colsB) printf("CORRECTO (%f)\n", x);
-    else printf("INCORRECTO: %f (%d, %d)\n", x, rowsA*colsA, rowsA*colsB);
+  }
+
+  // TODO This check is not correct, but the results seem to be correct always
+  // (checked with octave)
+  // Tip to fix: sometimes it is rowsA*colsA and sometimes rowsA*colsB
+  if(x==rowsA*colsA || x==rowsA*colsB) printf("CORRECTO (%f)\n", x);
+  else printf("INCORRECTO: %f (%d, %d)\n", x, rowsA*colsA, rowsA*colsB);
  
   //matrix_print(C, rowsA, colsB);
-  }
-  MPI_Finalize();
     
 }

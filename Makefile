@@ -1,10 +1,10 @@
 #FLAGS= -O3 -L/opt/cesga/AMD-APP-SDK-v2.4-lnx64/lib/x86_64/ -lOpenCL -I/opt/cesga/AMD-APP-SDK-v2.4-lnx64/include/
 #FLAGS = -O3 -L/usr/local/cuda/lib64 -lOpenCL -I/usr/local/cuda/include/
 #FLAGS = -O3 -L/usr/lib64/OpenCL/vendors/intel/ -lOpenCL -I/usr/local/cuda/include/
-FLAGS = -O3 -L /usr/lib64/OpenCL/vendors/intel/ -l OpenCL -I /usr/local/cuda/include/
+FLAGS = -O3 -l OpenCL -I /opt/cuda/include/
 
 vec_sum: matmul.cpp
-	mpic++ -o matmul.o matmul.cpp $(FLAGS)
+	g++ -o matmul.o matmul.cpp $(FLAGS)
 
 clean:
 	rm matmul.o
