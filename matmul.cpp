@@ -13,6 +13,7 @@
 
 #define USE_CPU 0x01
 #define USE_GPU 0x02
+#define USE_MPI 0x04
 
 void matrix_print(cl_float *A, cl_uint rowsA, cl_uint colsA) {
   int i, j;
@@ -40,7 +41,7 @@ const char* readKernelFromSource(const char* source) {
 }
 
 // C = A*B
-int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB, unsigned int flags) {
+int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB, unsigned int flags) {
   if(colsA != rowsB) { printf("Multiplication not defined for those matrices\n"); return -1; }
   cl_int errcode;
   cl_context context;
@@ -138,68 +139,84 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   return 1;
 }
 
-int main(int argc, char* argv[]) {
+int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
+                          unsigned int flags, int argc, char* argv[]) {
   int i, j;
   int mpi_rank, mpi_size;
   //int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
-  int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
+  //int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
   //int rowsA = 64, colsA = 64, rowsB = 64, colsB = 64;
-  cl_float *A, *B, *C;
+  //cl_float *A, *B, *C;
 
-  MPI_Init(&argc, &argv);
-
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-
-  // Matrix allocation and initialization
-  if(!mpi_rank) {
-    A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float));
-    B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
-    C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
-
-    for(i=0;i<rowsA;i++)
-      for(j=0;j<colsA;j++)
-        A[i*colsA+j]=1;
-
-    for(i=0;i<rowsB;i++)
-      for(j=0;j<colsB;j++)
-        B[i*colsB+j] = i==j ? 1 : 0;
+  if(flags & USE_MPI) {
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+  } else {
+    mpi_rank = 0;
+    mpi_size = 1;
   }
-  else {
+
+  if(mpi_rank) {
+    // Matrix allocation
     // We divide by mpi_size because we only need a fraction of A and C
     A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float)/mpi_size);
     B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
     C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float)/mpi_size);
   }
 
-  // Send B in full to each node
-  MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  if(flags & USE_MPI) {
+    // Send B in full to each node
+    MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    // Send & Recv A, each node needs rowsA/mpi_size rows of A
+    MPI_Scatter(A, rowsA*colsA/mpi_size, MPI_FLOAT, A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  }
 
-  // Send & Recv A, each node needs rowsA/mpi_size rows of A
-  MPI_Scatter(A, rowsA*colsA/mpi_size, MPI_FLOAT, A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  matrix_multiplication_cl(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB, flags);
 
-  // Do the partical multiplication
-  matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB, USE_GPU);
+  if(flags & USE_MPI) {
+    // Recv & Send C
+    MPI_Gather(C, rowsA*colsB/mpi_size, MPI_FLOAT, C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  }
 
-  // Recv & Send C
-  MPI_Gather(C, rowsA*colsB/mpi_size, MPI_FLOAT, C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  if(flags & USE_MPI) {
+    MPI_Finalize();
+  }
+    
+}
 
- // Result checking
-  if(!mpi_rank) {
-    float x = 0.0;
-    for(i=0; i<rowsA; i++) {
-      for(j=0; j<colsB; j++) {
-        x += C[i*colsB+j];
-      }
+int main(int argc, char* argv[]) {
+  unsigned int flags = USE_GPU | USE_MPI;
+  int i, j;
+  int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
+  cl_float *A, *B, *C;
+
+  A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float));
+  B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
+  C = (cl_float *) malloc(rowsA*colsB*sizeof(cl_float));
+
+  for(i=0;i<rowsA;i++)
+    for(j=0;j<colsA;j++)
+      A[i*colsA+j]=1;
+
+  for(i=0;i<rowsB;i++)
+    for(j=0;j<colsB;j++)
+      B[i*colsB+j] = i==j ? 1 : 0;
+
+  matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB, flags, argc, argv);
+
+  // Result checking
+  float x = 0.0;
+  for(i=0; i<rowsA; i++) {
+    for(j=0; j<colsB; j++) {
+      x += C[i*colsB+j];
     }
-    // TODO This check is not correct, but the results seem to be correct always
-    // (checked with octave)
-    // Tip to fix: sometimes it is rowsA*colsA and sometimes rowsA*colsB
-    if(x==rowsA*colsA || x==rowsA*colsB) printf("CORRECTO (%f)\n", x);
-    else printf("INCORRECTO: %f (%d, %d)\n", x, rowsA*colsA, rowsA*colsB);
+  }
+
+  // TODO This check is not correct always
+  if(x==rowsA*colsA || x==rowsA*colsB) printf("CORRECTO (%f)\n", x);
+  else printf("INCORRECTO: %f (%d, %d)\n", x, rowsA*colsA, rowsA*colsB);
  
   //matrix_print(C, rowsA, colsB);
-  }
-  MPI_Finalize();
-    
+
 }
