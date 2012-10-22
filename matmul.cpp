@@ -143,10 +143,8 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
 
 int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
                           unsigned int flags, int argc, char* argv[]) {
-  int i, j;
   int mpi_rank, mpi_size;
   int prows, mrows, fill;
-
 
   if(flags & USE_MPI) {
     MPI_Init(&argc, &argv);
@@ -175,7 +173,7 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
   }
 
   if(flags & USE_MPI) {
-    // Send & Recv A, each node needs rowsA/mpi_size rows of A
+    // Send & Recv A, each node needs prows rows of A
     MPI_Scatter(A, prows*colsA, MPI_FLOAT, A, prows*colsA, MPI_FLOAT, 0, MPI_COMM_WORLD);
     // Send B in full to each node
     MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
