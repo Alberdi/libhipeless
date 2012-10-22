@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MPI_INIT_TAG 9876
-#define MPI_RESULT_TAG 6789
+#define USE_CPU 0x01
+#define USE_GPU 0x02
 
 void matrix_print(cl_float *A, cl_uint rowsA, cl_uint colsA) {
   int i, j;
@@ -40,7 +40,7 @@ const char* readKernelFromSource(const char* source) {
 }
 
 // C = A*B
-int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB) {
+int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB, unsigned int flags) {
   if(colsA != rowsB) { printf("Multiplication not defined for those matrices\n"); return -1; }
   cl_int errcode;
   cl_context context;
@@ -60,16 +60,15 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   local_work_size[0] = 16;
   local_work_size[1] = 16;
 
-  //TODO Me gustaría obviar las siguientes líneas
   cl_uint size_platforms;
   errcode = clGetPlatformIDs(0, NULL, &size_platforms);
   cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
   errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
   checkErr(errcode, "clGetPlatformIDs");
-  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[1], 0};
-  // Hasta aquí
+  // TODO Following line is noot applicable to all the possible setups
+  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
 
-  context = clCreateContextFromType(cps, CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
+  context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
   checkErr(errcode, "clCreateContextFromType");
 
   errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &size_devices);
@@ -180,7 +179,7 @@ int main(int argc, char* argv[]) {
   MPI_Scatter(A, rowsA*colsA/mpi_size, MPI_FLOAT, A, rowsA*colsA/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
   // Do the partical multiplication
-  matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB);
+  matrix_multiplication(C, A, B, rowsA/mpi_size, colsA, rowsB, colsB, USE_GPU);
 
   // Recv & Send C
   MPI_Gather(C, rowsA*colsB/mpi_size, MPI_FLOAT, C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
