@@ -1,9 +1,3 @@
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
-#else
-#include <CL/cl.h>
-#endif
-
 #include "libhipeless.h"
 
 #include <stdio.h>

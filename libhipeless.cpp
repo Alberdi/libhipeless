@@ -192,6 +192,3 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
     
 }
 
-/*int main(int argc, char* argv[]) {
-  
-}*/

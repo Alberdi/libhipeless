@@ -1,3 +1,5 @@
+#include <CL/cl.h>
+
 #define USE_CPU 0x01
 #define USE_GPU 0x02
 #define USE_MPI 0x04
