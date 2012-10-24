@@ -16,6 +16,7 @@
 #define USE_CPU 0x01
 #define USE_GPU 0x02
 #define USE_MPI 0x04
+#define NON_MPI_ROOT 0x08
 
 void matrix_print(cl_float *A, cl_uint rowsA, cl_uint colsA) {
   int i, j;
@@ -143,13 +144,23 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
 
 int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
                           unsigned int flags, int argc, char* argv[]) {
-  int mpi_rank, mpi_size;
+  int root_argument, mpi_size = 2;
   int prows, mrows, fill;
+  MPI_Comm intercomm, parent;
 
   if(flags & USE_MPI) {
     MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    MPI_Comm_get_parent(&parent);
+    if(parent == MPI_COMM_NULL) {
+      char* mpi_helper = (char *) "mpihelper";
+      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
+                    MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
+      root_argument = MPI_ROOT;
+    }
+    else {
+      intercomm = parent;
+      root_argument = 0;
+    }
     // Calculate the rows of A to be multiplied by each node
     // prows = processor rows (for each one other than the root)
     prows = rowsA/mpi_size - ((rowsA/mpi_size) % BLOCK_SIZE);
@@ -157,38 +168,33 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
     mrows = rowsA - prows*(mpi_size-1);
     // fill = rows that must be added to the root to be a multiple of 16
     if(mrows % BLOCK_SIZE != 0)
-    fill = BLOCK_SIZE - (mrows % BLOCK_SIZE);
+      fill = BLOCK_SIZE - (mrows % BLOCK_SIZE);
   } else {
-    mpi_rank = 0;
     mpi_size = 1;
     mrows = rowsA;
     fill = 0;
   }
 
-  if(mpi_rank) {
-    // Matrix allocation
-    A = (cl_float *) malloc(prows*colsA*sizeof(cl_float));
-    B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
-    C = (cl_float *) malloc(prows*colsB*sizeof(cl_float));
-  }
-
   if(flags & USE_MPI) {
+    if (parent != MPI_COMM_NULL) {
+      // Matrix allocation
+      A = (cl_float *) malloc(prows*colsA*sizeof(cl_float));
+      B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
+      C = (cl_float *) malloc(prows*colsB*sizeof(cl_float));
+    }
+
     // Send & Recv A, each node needs prows rows of A
-    MPI_Scatter(A, prows*colsA, MPI_FLOAT, A, prows*colsA, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(&A[(mrows+fill)*colsA], prows*colsA, MPI_FLOAT, A, prows*colsA, MPI_FLOAT, root_argument, intercomm);
     // Send B in full to each node
-    MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, root_argument, intercomm);
   }
 
-  matrix_multiplication_cl(C, A, B, mpi_rank ? prows : mrows+fill, colsA, rowsB, colsB, flags);
+  matrix_multiplication_cl(C, A, B, root_argument ? mrows+fill : prows, colsA, rowsB, colsB, flags);
+
 
   if(flags & USE_MPI) {
     // Recv & Send C
-    MPI_Gather(C, rowsA*colsB/mpi_size, MPI_FLOAT, C, rowsA*colsB/mpi_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
-  }
-
-  if(flags & USE_MPI) {
+    MPI_Gather(C, prows*colsB, MPI_FLOAT, &C[(mrows+fill)*colsB], prows*colsB, MPI_FLOAT, root_argument, intercomm);
     MPI_Finalize();
   }
-    
 }
-
