@@ -27,7 +27,7 @@ void matrix_print(cl_float *A, cl_uint rowsA, cl_uint colsA) {
 inline void checkErr(cl_int errcode, const char* name) {
   if(errcode != CL_SUCCESS) {
     std::cerr << "ERROR: " << name << " (" << errcode << ")" << std::endl;
-    exit(EXIT_FAILURE);
+    //exit(EXIT_FAILURE);
   }
 }
 
@@ -135,9 +135,8 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 
   for(i=0; i < num_devices; i++) {
     clFinish(command_queues[i]);
-
-    errcode = clEnqueueReadBuffer(command_queues[i], memC, CL_TRUE, i*(rowsA*colsB/num_devices),
-      rowsA*colsB*sizeof(cl_float)/num_devices, C, 0, NULL, NULL);
+    errcode = clEnqueueReadBuffer(command_queues[i], memC, CL_TRUE, 0,
+      rowsA*colsB*sizeof(cl_float)/num_devices, &C[i*(rowsA*colsB/num_devices)], 0, NULL, NULL);
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
@@ -156,7 +155,7 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 int main(int argc, char* argv[]) {
   int i, j;
   //int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
-  int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
+  int rowsA = 128, colsA = 512, rowsB = 512, colsB = 2048;
   cl_float *A, *B, *C;
 
  // Matrix allocation and initialization
