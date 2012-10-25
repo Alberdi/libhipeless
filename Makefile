@@ -18,6 +18,9 @@ mpihelper.o: mpihelper.cpp libhipeless.h
 libhipeless.o: libhipeless.cpp libhipeless.h
 	mpic++ -c libhipeless.cpp $(FLAGS)
 
+test: test.cpp
+	g++ -o test test.cpp $(FLAGS)
+
 clean:
 	rm *.o main mpihelper
 
