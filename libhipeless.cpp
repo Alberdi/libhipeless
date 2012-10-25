@@ -69,7 +69,7 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
   cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
   errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
   checkErr(errcode, "clGetPlatformIDs");
-  // TODO Following line is noot applicable to all the possible setups
+  // TODO Following line is not applicable to all the possible setups
   cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
 
   context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
@@ -80,7 +80,7 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
   errcode |= clGetContextInfo(context, CL_CONTEXT_DEVICES, size_devices, devices, NULL);
   checkErr(errcode, "clGetContextInfo");
 
-  // We take the first GPU device
+  // We take the first device
   command_queue = clCreateCommandQueue(context, devices[0], CL_QUEUE_PROFILING_ENABLE, &errcode);
   checkErr(errcode, "clCreateCommandQueue");
 
@@ -144,11 +144,17 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
 
 int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
                           unsigned int flags, int argc, char* argv[]) {
-  int root_argument, mpi_size = 2;
+  int root_argument, mpi_size;
   int prows, mrows, fill;
   MPI_Comm intercomm, parent;
 
   if(flags & USE_MPI) {
+    char* universe_size = getenv("UNIVERSE_SIZE");
+    if(universe_size == NULL) {
+      printf("UNIVERSE_SIZE is not set\n");
+      return -1;
+    }
+    mpi_size = atoi(universe_size);
     MPI_Init(&argc, &argv);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
