@@ -204,7 +204,6 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
 
   matrix_multiplication_cl(C, A, B, root_argument ? mrows+fill : prows, colsA, rowsB, colsB, flags);
 
-
   if(flags & USE_MPI) {
     // Recv & Send C
     MPI_Gather(C, prows*colsB, MPI_FLOAT, &C[(mrows+fill)*colsB], prows*colsB, MPI_FLOAT, root_argument, intercomm);

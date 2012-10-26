@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsA, colsA);
   for(i=0;i<rowsA;i++) {
     for(j=0;j<colsA;j++) {
-      A[i*colsA+j]=1;
+      A[i*colsA+j] = (float)rand();
       PM printf("%f ", A[i*colsA+j]);
     }
     PM printf("\n");
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
   PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsB, colsB);
   for(i=0;i<rowsB;i++) {
     for(j=0;j<colsB;j++) {
-      B[i*colsB+j] = i==j ? 1 : 0;
+      B[i*colsB+j] = (float)rand();
       PM printf("%f ", B[i*colsB+j]);
     }
     PM printf("\n");
