@@ -143,7 +143,7 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
 }
 
 int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
-                          unsigned int flags, int argc, char* argv[]) {
+                          unsigned int flags) {
   int root_argument, mpi_size;
   int prows, mrows, fill;
   MPI_Comm intercomm, parent;
@@ -155,26 +155,26 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
       return -1;
     }
     mpi_size = atoi(universe_size);
-    MPI_Init(&argc, &argv);
+    MPI_Init(0, NULL);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
       char* mpi_helper = (char *) "mpihelper";
       MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
       root_argument = MPI_ROOT;
+      // Calculate the rows of A to be multiplied by each node
+      // prows = processor rows (for each one other than the root)
+      prows = rowsA/mpi_size - ((rowsA/mpi_size) % BLOCK_SIZE);
+      // mrows = master rows (root)
+      mrows = rowsA - prows*(mpi_size-1);
+      // fill = rows that must be added to the root to be a multiple of 16
+      if(mrows % BLOCK_SIZE != 0)
+        fill = BLOCK_SIZE - (mrows % BLOCK_SIZE);
     }
     else {
       intercomm = parent;
       root_argument = 0;
     }
-    // Calculate the rows of A to be multiplied by each node
-    // prows = processor rows (for each one other than the root)
-    prows = rowsA/mpi_size - ((rowsA/mpi_size) % BLOCK_SIZE);
-    // mrows = master rows (root)
-    mrows = rowsA - prows*(mpi_size-1);
-    // fill = rows that must be added to the root to be a multiple of 16
-    if(mrows % BLOCK_SIZE != 0)
-      fill = BLOCK_SIZE - (mrows % BLOCK_SIZE);
   } else {
     mpi_size = 1;
     mrows = rowsA;
@@ -182,6 +182,13 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
   }
 
   if(flags & USE_MPI) {
+    // Broadcast matrices dimensions
+    MPI_Bcast(&prows, 1, MPI_UNSIGNED, root_argument, intercomm);
+    MPI_Bcast(&colsA, 1, MPI_UNSIGNED, root_argument, intercomm);
+    MPI_Bcast(&rowsB, 1, MPI_UNSIGNED, root_argument, intercomm);
+    MPI_Bcast(&colsB, 1, MPI_UNSIGNED, root_argument, intercomm);
+    MPI_Bcast(&flags, 1, MPI_UNSIGNED, root_argument, intercomm);
+
     if (parent != MPI_COMM_NULL) {
       // Matrix allocation
       A = (cl_float *) malloc(prows*colsA*sizeof(cl_float));

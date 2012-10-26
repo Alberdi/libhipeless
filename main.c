@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
     for(j=0;j<colsB;j++)
       B[i*colsB+j] = i==j ? 1 : 0;
 
-  matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB, flags, argc, argv);
+  matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB, flags);
 
   // Result checking
   float x = 0.0;
