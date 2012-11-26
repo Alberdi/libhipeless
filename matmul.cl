@@ -1,7 +1,9 @@
 // Thread block size
 #define BLOCK_SIZE 16
 
-__kernel void matmul(__global float *C, __global const float *A, __global const float *B, const uint colsA, const uint colsB) {
+__kernel void matmul(__global float *C, __global const float *A, __global const float *B, const uint rowsA, const uint colsA, const uint colsB) {
+  uint rowsB = colsA;
+  uint ra, ca, rb, cb;
   float Csub = 0;
 
   // Block index
@@ -18,6 +20,7 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
   // Index of the first sub-matrix of B processed by the block
   int b = BLOCK_SIZE * by;
 
+
   // Declaration of the local memory array As 
   // used to store the sub-matrix of A
   __local float As[BLOCK_SIZE][BLOCK_SIZE];
@@ -31,13 +34,24 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
     // each thread loads one element of each matrix
     // Barriers are used for synchronization and to be sure we don't
     // overwrite an address that's going to be used
+    ra = tx+BLOCK_SIZE*bx;
+    ca = i+ty;
+    rb = i+tx;
+    cb = ty+BLOCK_SIZE*by;
     barrier(CLK_LOCAL_MEM_FENCE);
-    As[tx][ty] = A[(tx+BLOCK_SIZE*bx)*colsA+i+ty];
-    Bs[tx][ty] = B[(tx+i)*colsB+BLOCK_SIZE*by+ty];
+    if(ra >= rowsA || ca >= colsA)
+      As[tx][ty] = 0;
+    else
+      As[tx][ty] = A[ra*colsA+ca];
+    if(rb >= rowsB || cb >= colsB)
+      Bs[tx][ty] = 0;
+    else
+      Bs[tx][ty] = B[rb*colsB+cb];
     barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int k=0; k<BLOCK_SIZE; k++)
       Csub += As[tx][k] * Bs[k][ty];
   }
-  C[(tx+a)*colsB+(ty+b)] = Csub;
+  if(tx+a < rowsA && ty+b < colsB) // In bounds
+    C[(tx+a)*colsB+(ty+b)] = Csub;
 }

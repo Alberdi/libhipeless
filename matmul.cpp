@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BLOCK_SIZE 16
 #define MPI_INIT_TAG 9876
 #define MPI_RESULT_TAG 6789
 
@@ -54,10 +55,10 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   size_t global_work_size[2];
   size_t local_work_size[2];
 
-  global_work_size[0] = rowsA;
-  global_work_size[1] = colsB;
-  local_work_size[0] = 16;
-  local_work_size[1] = 16;
+  global_work_size[0] = rowsA + (rowsA % BLOCK_SIZE ? BLOCK_SIZE - (rowsA % BLOCK_SIZE) : 0);
+  global_work_size[1] = rowsB + (rowsB % BLOCK_SIZE ? BLOCK_SIZE - (rowsB % BLOCK_SIZE) : 0);
+  local_work_size[0] = BLOCK_SIZE;
+  local_work_size[1] = BLOCK_SIZE;
 
   //TODO Me gustaría obviar las siguientes líneas
   cl_uint size_platforms;
@@ -115,10 +116,13 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   errcode = clSetKernelArg(kernel, 2, sizeof(cl_mem), &memB);
   checkErr(errcode, "clSetKernelArg");
 
-  errcode = clSetKernelArg(kernel, 3, sizeof(cl_uint), &colsA);
+  errcode = clSetKernelArg(kernel, 3, sizeof(cl_uint), &rowsA);
   checkErr(errcode, "clSetKernelArg");
 
-  errcode = clSetKernelArg(kernel, 4, sizeof(cl_uint), &colsB);
+  errcode = clSetKernelArg(kernel, 4, sizeof(cl_uint), &colsA);
+  checkErr(errcode, "clSetKernelArg");
+
+  errcode = clSetKernelArg(kernel, 5, sizeof(cl_uint), &colsB);
   checkErr(errcode, "clSetKernelArg");
 
   errcode = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
@@ -140,7 +144,7 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 
 int main(int argc, char* argv[]) {
   int i, j;
-  int rowsA = 2048, colsA = 2048, rowsB = 2048, colsB = 2048;
+  int rowsA = 63, colsA = 128, rowsB = 128, colsB = 63;
   //int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
   cl_float *A, *B, *C;
 
