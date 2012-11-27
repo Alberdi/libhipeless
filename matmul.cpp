@@ -52,6 +52,8 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   cl_program program;
   cl_kernel kernel;
 
+  int dev_rowsA, last_dev_rowsA, rA;
+
   const char *source;
   size_t size_devices;
   size_t global_work_size[2];
@@ -81,14 +83,17 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   devices = (cl_device_id *) malloc(size_devices);
   errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, size_devices, devices, NULL);
   checkErr(errcode, "clGetContextInfo3");
- 
-  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, rowsA*colsA*sizeof(cl_float)/num_devices, NULL, &errcode);
+
+  dev_rowsA = rowsA/num_devices;
+  last_dev_rowsA = rowsA - dev_rowsA*(num_devices-1);
+
+  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_rowsA*colsA*sizeof(cl_float), NULL, &errcode);
   checkErr(errcode, "clCreateBuffer");
 
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, rowsB*colsB*sizeof(cl_float), NULL, &errcode);
   checkErr(errcode, "clCreateBuffer");
 
-  memC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, rowsA*colsB*sizeof(cl_float)/num_devices, NULL, &errcode);
+  memC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, last_dev_rowsA*colsB*sizeof(cl_float), NULL, &errcode);
   checkErr(errcode, "clCreateBuffer");
 
   source = readKernelFromSource("./matmul.cl");
@@ -104,12 +109,12 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
    
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
   for(i=0; i < num_devices; i++) {
-    printf("Queue %i out of %i\n", i, num_devices);
+    rA = i == num_devices-1 ? last_dev_rowsA : dev_rowsA;
     command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
 
     errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0,
-       rowsA*colsA*sizeof(cl_float)/num_devices, &A[i*(rowsA*colsA/num_devices)], 0, NULL, NULL);
+       rA*colsA*sizeof(cl_float), &A[i*(rowsA*colsA/num_devices)], 0, NULL, NULL);
     checkErr(errcode, "clEnqueueWriteBufferA");
 
     errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, rowsB*colsB*sizeof(cl_float), B, 0, NULL, NULL);
@@ -140,7 +145,7 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
   for(i=0; i < num_devices; i++) {
     clFinish(command_queues[i]);
     errcode = clEnqueueReadBuffer(command_queues[i], memC, CL_TRUE, 0,
-      rowsA*colsB*sizeof(cl_float)/num_devices, &C[i*(rowsA*colsB/num_devices)], 0, NULL, NULL);
+      rA*colsB*sizeof(cl_float), &C[i*(rowsA*colsB/num_devices)], 0, NULL, NULL);
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
@@ -158,7 +163,7 @@ int matrix_multiplication(cl_float *C, const cl_float *A, const cl_float *B, cl_
 
 int main(int argc, char* argv[]) {
   int i, j;
-  int rowsA = 63, colsA = 128, rowsB = 128, colsB = 63;
+  int rowsA = 61, colsA = 125, rowsB = 125, colsB = 67;
   //int rowsA = 1024, colsA = 512, rowsB = 512, colsB = 2048;
   cl_float *A, *B, *C;
 
