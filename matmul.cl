@@ -20,7 +20,6 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
   // Index of the first sub-matrix of B processed by the block
   int b = BLOCK_SIZE * by;
 
-
   // Declaration of the local memory array As 
   // used to store the sub-matrix of A
   __local float As[BLOCK_SIZE][BLOCK_SIZE];
@@ -52,6 +51,7 @@ __kernel void matmul(__global float *C, __global const float *A, __global const 
     for(int k=0; k<BLOCK_SIZE; k++)
       Csub += As[tx][k] * Bs[k][ty];
   }
+
   if(tx+a < rowsA && ty+b < colsB) // In bounds
     C[(tx+a)*colsB+(ty+b)] = Csub;
 }
