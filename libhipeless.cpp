@@ -174,7 +174,7 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
 int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
                           unsigned int flags) {
   int root_argument, mpi_size;
-  int prows, mrows, fill;
+  int prows, mrows;
   MPI_Comm intercomm, parent;
 
   if(flags & USE_MPI) {
@@ -191,23 +191,18 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
       MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
       root_argument = MPI_ROOT;
-      // Calculate the rows of A to be multiplied by each node
       // prows = processor rows (for each one other than the root)
-      prows = rowsA/mpi_size - ((rowsA/mpi_size) % BLOCK_SIZE);
+      prows = rowsA/mpi_size;
       // mrows = master rows (root)
       mrows = rowsA - prows*(mpi_size-1);
-      // fill = rows that must be added to the root to be a multiple of 16
-      if(mrows % BLOCK_SIZE != 0)
-        fill = BLOCK_SIZE - (mrows % BLOCK_SIZE);
     }
     else {
       intercomm = parent;
       root_argument = 0;
     }
   } else {
-    root_argument = 1;
     mrows = rowsA;
-    fill = 0;
+    root_argument = 1;
   }
 
   if(flags & USE_MPI) {
@@ -226,16 +221,16 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
     }
 
     // Send & Recv A, each node needs prows rows of A
-    MPI_Scatter(&A[(mrows+fill)*colsA], prows*colsA, MPI_FLOAT, A, prows*colsA, MPI_FLOAT, root_argument, intercomm);
+    MPI_Scatter(A, prows*colsA, MPI_FLOAT, A, prows*colsA, MPI_FLOAT, root_argument, intercomm);
     // Send B in full to each node
     MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, root_argument, intercomm);
   }
 
-  matrix_multiplication_cl(C, A, B, root_argument ? mrows+fill : prows, colsA, rowsB, colsB, flags);
+  matrix_multiplication_cl(C, A, B, root_argument ? mrows : prows, colsA, rowsB, colsB, flags);
 
   if(flags & USE_MPI) {
     // Recv & Send C
-    MPI_Gather(C, prows*colsB, MPI_FLOAT, &C[(mrows+fill)*colsB], prows*colsB, MPI_FLOAT, root_argument, intercomm);
+    MPI_Gather(C, prows*colsB, MPI_FLOAT, C, prows*colsB, MPI_FLOAT, root_argument, intercomm);
     MPI_Finalize();
   }
 }
