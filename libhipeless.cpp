@@ -28,7 +28,6 @@ void matrix_print(cl_float *A, cl_uint rowsA, cl_uint colsA) {
   }
 }
 
-//TODO se debería salir de la función con un error, no hacer un exit()
 inline void checkErr(cl_int errcode, const char* name) {
   if(errcode != CL_SUCCESS) {
     std::cerr << "ERROR: " << name << " (" << errcode << ")" << std::endl;
@@ -148,7 +147,6 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
     errcode = clSetKernelArg(kernel, 5, sizeof(cl_uint), &colsB);
     checkErr(errcode, "clSetKernelArg");
 
-    //FIXME: Esta muy mal lo de global_work_size, deberia ser menos
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");
   }
@@ -180,9 +178,9 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
   MPI_Comm intercomm, parent;
 
   if(flags & USE_MPI) {
-    char* universe_size = getenv("UNIVERSE_SIZE");
+    char* universe_size = getenv("MPI_UNIVERSE_SIZE");
     if(universe_size == NULL) {
-      printf("UNIVERSE_SIZE is not set\n");
+      printf("MPI_UNIVERSE_SIZE is not set\n");
       return -1;
     }
     mpi_size = atoi(universe_size);
