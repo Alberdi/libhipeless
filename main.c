@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define PRINT_MATRICES 1
+//#define PRINT_MATRICES 1
 
 #ifdef PRINT_MATRICES
   #define PM if(1)
@@ -13,7 +13,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_GPU;
+  unsigned int flags = USE_CPU | USE_MPI;
   int i, j;
   int rowsA, colsA, rowsB, colsB;
   cl_float *A, *B, *C; 
@@ -24,6 +24,12 @@ int main(int argc, char* argv[]) {
   colsA = (int)(rand()%max_size)+1;
   rowsB = colsA;
   colsB = (int)(rand()%max_size)+1;
+
+  rowsA = 2000;
+  colsA = 2000;
+  rowsB = 2000;
+  colsB = 2000;
+
   
   A = (cl_float *) malloc(rowsA*colsA*sizeof(cl_float));
   B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));

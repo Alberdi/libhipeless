@@ -1,7 +1,7 @@
 #FLAGS = -O3 -L/usr/lib64/OpenCL/vendors/intel/ -lOpenCL -I/usr/local/cuda/include/
 FLAGS = -O3 -L /opt/AMDAPP/lib/x86_64/ -l OpenCL -I /opt/AMDAPP/include/
 
-all: libhipeless.o main mpihelper
+all: libhipeless.o main mpihelper test
 
 main: main.o libhipeless.o
 	mpic++ -o main main.o libhipeless.o $(FLAGS)
@@ -22,5 +22,5 @@ test: test.cpp
 	g++ -o test test.cpp $(FLAGS)
 
 clean:
-	rm *.o main mpihelper
+	rm *.o main mpihelper test
 
