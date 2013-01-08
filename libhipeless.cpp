@@ -187,11 +187,8 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
     MPI_Init(0, NULL);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
-      MPI_Info info; 
-      MPI_Info_create(&info); 
-      MPI_Info_set(info, "hostfile", "machines.pluton");
       char* mpi_helper = (char *) "mpihelper";
-      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, info, 0,
+      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
       root_argument = MPI_ROOT;
       // prows = processor rows (for each one other than the root)
