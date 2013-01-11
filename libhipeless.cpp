@@ -171,6 +171,7 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
   return 1;
 }
 
+// C = A*B
 int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
                           unsigned int flags) {
   int root_argument, mpi_size;
@@ -234,3 +235,19 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
     MPI_Finalize();
   }
 }
+
+// C = alpha*B
+int scalar_matrix_multiplication_cl(cl_float *C, const cl_float alpha, const cl_float *B, cl_uint rowsB, cl_uint colsB, unsigned int flags) {
+}
+
+// C = alpha*B
+int scalar_matrix_multiplication(cl_float *C, cl_float alpha, cl_float *B, cl_uint rowsB, cl_uint colsB, unsigned int flags) {
+  if(flags & USE_MPI) {
+  }
+
+  scalar_matrix_multiplication_cl(C, alpha, B, rowsB, colsB, flags);
+  
+  if(flags & USE_MPI) {
+  }
+}
+
