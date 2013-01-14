@@ -13,7 +13,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_CPU | USE_MPI;
+  unsigned int flags = USE_CPU;
   int i, j;
   int rowsA, colsA, rowsB, colsB;
   cl_float *A, *B, *C; 
