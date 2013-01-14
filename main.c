@@ -13,7 +13,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_CPU | USE_MPI;
+  unsigned int flags = USE_CPU;
   int i, j;
   int rowsA, colsA, rowsB, colsB;
   cl_float *A, *B, *C; 
@@ -53,7 +53,8 @@ int main(int argc, char* argv[]) {
     PM printf("\n");
   }
 
-  matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB, flags);
+  scalar_matrix_multiplication(C, 5.2f, B, rowsB, colsB, flags);
+  //matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB, flags);
 
   // Result checking
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsA, colsB);

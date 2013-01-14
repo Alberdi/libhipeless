@@ -237,17 +237,7 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
 }
 
 // C = alpha*B
-int scalar_matrix_multiplication_cl(cl_float *C, const cl_float alpha, const cl_float *B, cl_uint rowsB, cl_uint colsB, unsigned int flags) {
-}
-
-// C = alpha*B
 int scalar_matrix_multiplication(cl_float *C, cl_float alpha, cl_float *B, cl_uint rowsB, cl_uint colsB, unsigned int flags) {
-  if(flags & USE_MPI) {
-  }
-
-  scalar_matrix_multiplication_cl(C, alpha, B, rowsB, colsB, flags);
-  
-  if(flags & USE_MPI) {
-  }
+  matrix_multiplication(C, &alpha, B, 1, 1, rowsB, colsB, flags);
 }
 
