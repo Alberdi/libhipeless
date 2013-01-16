@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define PRINT_MATRICES 1
+//#define PRINT_MATRICES 1
 
 #ifdef PRINT_MATRICES
   #define PM if(1)
@@ -54,10 +54,8 @@ int main(int argc, char* argv[]) {
     PM printf("\n");
   }
 
-printf("PRE\n");
   blas_sgemm(NULL, NULL, 1, &A, &B, 0, &C, flags);
   //matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB, flags);
-printf("POST\n");
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", C.size1, C.size2);
