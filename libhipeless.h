@@ -1,9 +1,23 @@
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
 #include <CL/cl.h>
+#endif
+
+#define BLOCK_SIZE 16
 
 #define USE_CPU 0x01
 #define USE_GPU 0x02
 #define USE_MPI 0x04
 #define NON_MPI_ROOT 0x08
 
-int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
-                          unsigned int flags);
+typedef struct {
+  size_t size1;
+  size_t size2;
+  cl_float *data;
+} float_matrix;
+
+// C = alpha * A * B + beta * C
+// Single precission/float
+int blas_sgemm(void* TransA, void* TransB, cl_float alpha, const float_matrix *A, const float_matrix *B, cl_float beta, float_matrix *C, int flags);
+
