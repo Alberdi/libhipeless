@@ -50,7 +50,7 @@ const char* readKernelFromSource(const char* source) {
 
 
 int opencl_operation(void *TransA, void *TransB, float alpha, const matrix_float *A, const matrix_float *B, float beta, matrix_float *C,
-                     int flags, const char* sourcefile) {
+                     int flags, const char* kernelfunction) {
   int i;
   cl_uint num_devices;
   cl_int errcode;
@@ -109,7 +109,7 @@ int opencl_operation(void *TransA, void *TransB, float alpha, const matrix_float
     checkErr(errcode, "clCreateBufferC");
   }
 
-  source = readKernelFromSource(sourcefile);
+  source = readKernelFromSource("operations.cl");
   size_t size_source[] = { strlen(source) };
   program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
   checkErr(errcode, "clCreateProgramWithSource");
@@ -117,7 +117,7 @@ int opencl_operation(void *TransA, void *TransB, float alpha, const matrix_float
   errcode = clBuildProgram(program, size_devices/sizeof(cl_device_id), devices, NULL, NULL, NULL);
   checkErr(errcode, "clBuildProgram");
 
-  kernel = clCreateKernel(program, "matmul", &errcode);
+  kernel = clCreateKernel(program, kernelfunction, &errcode);
   checkErr(errcode, "clCreateKernel");
    
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
@@ -183,7 +183,7 @@ int blas_sgemm(void* TransA, void* TransB, float alpha, const matrix_float *A, c
   if(A->size1 != B->size2) { printf("Multiplication not defined for those matrices\n"); return -1; }
   if(A->size1 != C->size1 || B->size2 != C->size2) { printf("Wrong dimensions on the C matrix\n"); return -1; }
 
-  opencl_operation(TransA, TransB, alpha, A, B, beta, C, flags, "./matmul.cl");
+  opencl_operation(TransA, TransB, alpha, A, B, beta, C, flags, "matmul");
 }
 
 void test_blas_sgemm() {
@@ -218,7 +218,6 @@ printf("PRE_BLAS\n");
   blas_sgemm(NULL, NULL, 1, A, B, 0, C, USE_CPU);
 printf("POST_BLAS\n");
 }
-
 
 // C = A*B
 int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB, unsigned int flags) {
@@ -284,7 +283,7 @@ int matrix_multiplication_cl(cl_float *C, const cl_float *A, const cl_float *B, 
     checkErr(errcode, "clCreateBufferC");
   }
 
-  source = readKernelFromSource("./matmul.cl");
+  source = readKernelFromSource("./operations.cl");
   size_t size_source[] = { strlen(source) };
   program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
   checkErr(errcode, "clCreateProgramWithSource");
