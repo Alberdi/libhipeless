@@ -13,7 +13,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_CPU;
+  unsigned int flags = USE_CPU | USE_MPI;
   int i, j;
   int rowsA, colsA, rowsB, colsB;
   float_matrix A, B, C; 
@@ -55,7 +55,6 @@ int main(int argc, char* argv[]) {
   }
 
   blas_sgemm(NULL, NULL, 1, &A, &B, 0, &C, flags);
-  //matrix_multiplication(C, A, B, rowsA, colsA, rowsB, colsB, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", C.size1, C.size2);

@@ -157,17 +157,12 @@ int opencl_operation(void *TransA, void *TransB, cl_float alpha, const float_mat
 
 // C = alpha * A * B + beta * C
 // Single precission/float
-int blas_sgemm(void* TransA, void* TransB, cl_float alpha, const float_matrix *A, const float_matrix *B, cl_float beta, float_matrix *C, int flags) {
-  if(A->size1 != B->size2) { printf("Multiplication not defined for those matrices\n"); return -1; }
-  if(A->size1 != C->size1 || B->size2 != C->size2) { printf("Wrong dimensions on the C matrix\n"); return -1; }
+int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, float_matrix *B, cl_float beta, float_matrix *C, unsigned int flags) {
+//  if(A->size1 != B->size2) { printf("Multiplication not defined for those matrices\n"); return -1; }
+//  if(A->size1 != C->size1 || B->size2 != C->size2) { printf("Wrong dimensions on the C matrix\n"); return -1; }
 
-  opencl_operation(TransA, TransB, alpha, A, B, beta, C, flags, "blas_sgemm");
-}
-
-int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, cl_uint colsA, cl_uint rowsB, cl_uint colsB,
-                          unsigned int flags) {
   int root_argument, mpi_size;
-  int prows, mrows;
+  unsigned int prows, mrows, saved_Asize1;
   MPI_Comm intercomm, parent;
 
   if(flags & USE_MPI) {
@@ -185,45 +180,56 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
       root_argument = MPI_ROOT;
       // prows = processor rows (for each one other than the root)
-      prows = rowsA/mpi_size;
-      // mrows = master rows (root)
-      mrows = rowsA - prows*(mpi_size-1);
+      prows = A->size1/mpi_size;
+      saved_Asize1 = A->size1;
+      A->size1 = A->size1 - prows*(mpi_size-1);
     }
     else {
       intercomm = parent;
       root_argument = 0;
+      // Matrix allocation
+      A = (float_matrix *) malloc(sizeof(float_matrix));
+      B = (float_matrix *) malloc(sizeof(float_matrix));
+      C = (float_matrix *) malloc(sizeof(float_matrix));
     }
   } else {
-    mrows = rowsA;
     root_argument = 1;
   }
 
   if(flags & USE_MPI) {
     // Broadcast matrices dimensions
     MPI_Bcast(&prows, 1, MPI_UNSIGNED, root_argument, intercomm);
-    MPI_Bcast(&colsA, 1, MPI_UNSIGNED, root_argument, intercomm);
-    MPI_Bcast(&rowsB, 1, MPI_UNSIGNED, root_argument, intercomm);
-    MPI_Bcast(&colsB, 1, MPI_UNSIGNED, root_argument, intercomm);
+    MPI_Bcast(&A->size2, 1, MPI_UNSIGNED_LONG, root_argument, intercomm);
+    MPI_Bcast(&B->size1, 1, MPI_UNSIGNED_LONG, root_argument, intercomm);
+    MPI_Bcast(&B->size2, 1, MPI_UNSIGNED_LONG, root_argument, intercomm);
     MPI_Bcast(&flags, 1, MPI_UNSIGNED, root_argument, intercomm);
+    MPI_Bcast(&alpha, 1, MPI_FLOAT, root_argument, intercomm);
+    MPI_Bcast(&beta, 1, MPI_FLOAT, root_argument, intercomm);
 
-    if (parent != MPI_COMM_NULL) {
-      // Matrix allocation
-      A = (cl_float *) malloc(prows*colsA*sizeof(cl_float));
-      B = (cl_float *) malloc(rowsB*colsB*sizeof(cl_float));
-      C = (cl_float *) malloc(prows*colsB*sizeof(cl_float));
+    if(parent != MPI_COMM_NULL) {
+      A->size1 = prows;
+      C->size1 = A->size1;
+      C->size2 = B->size2;
+      A->size1 = prows;
+      A->data = (cl_float *) malloc(prows*A->size2*sizeof(cl_float));
+      B->data = (cl_float *) malloc(B->size1*B->size2*sizeof(cl_float));
+      C->data = (cl_float *) malloc(prows*C->size2*sizeof(cl_float));
     }
-
     // Send & Recv A, each node needs prows rows of A
-    MPI_Scatter(A, prows*colsA, MPI_FLOAT, A, prows*colsA, MPI_FLOAT, root_argument, intercomm);
+    MPI_Scatter(A->data, prows*A->size2, MPI_FLOAT, A->data, prows*A->size2, MPI_FLOAT, root_argument, intercomm);
     // Send B in full to each node
-    MPI_Bcast(B, rowsB*colsB, MPI_FLOAT, root_argument, intercomm);
+    MPI_Bcast(B->data, B->size1*B->size2, MPI_FLOAT, root_argument, intercomm);
   }
 
-  //matrix_multiplication_cl(C, A, B, root_argument ? mrows : prows, colsA, rowsB, colsB, flags);
+  opencl_operation(TransA, TransB, alpha, A, B, beta, C, flags, "blas_sgemm");
 
   if(flags & USE_MPI) {
+    // A->size1 might have been overwritten on the parent
+    if(parent == MPI_COMM_NULL) {
+      A->size1 = saved_Asize1;
+    }
     // Recv & Send C
-    MPI_Gather(C, prows*colsB, MPI_FLOAT, C, prows*colsB, MPI_FLOAT, root_argument, intercomm);
+    MPI_Gather(C->data, prows*C->size2, MPI_FLOAT, C->data, prows*C->size2, MPI_FLOAT, root_argument, intercomm);
     MPI_Finalize();
   }
 }
