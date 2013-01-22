@@ -161,7 +161,8 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
 //  if(A->size1 != B->size2) { printf("Multiplication not defined for those matrices\n"); return -1; }
 //  if(A->size1 != C->size1 || B->size2 != C->size2) { printf("Wrong dimensions on the C matrix\n"); return -1; }
 
-  int root_argument, mpi_size;
+  int root_argument, mpi_size, i, offset;
+  int *displs, *scounts;
   unsigned int prows, mrows, saved_Asize1;
   MPI_Comm intercomm, parent;
 
@@ -199,6 +200,7 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
   if(flags & USE_MPI) {
     // Broadcast matrices dimensions
     MPI_Bcast(&prows, 1, MPI_UNSIGNED, root_argument, intercomm);
+    MPI_Bcast(&A->size1, 1, MPI_UNSIGNED_LONG, root_argument, intercomm);
     MPI_Bcast(&A->size2, 1, MPI_UNSIGNED_LONG, root_argument, intercomm);
     MPI_Bcast(&B->size1, 1, MPI_UNSIGNED_LONG, root_argument, intercomm);
     MPI_Bcast(&B->size2, 1, MPI_UNSIGNED_LONG, root_argument, intercomm);
@@ -206,17 +208,28 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
     MPI_Bcast(&alpha, 1, MPI_FLOAT, root_argument, intercomm);
     MPI_Bcast(&beta, 1, MPI_FLOAT, root_argument, intercomm);
 
+    // Calculate displacement and send count for A and C
+    displs = (int *) malloc(mpi_size*sizeof(int));
+    scounts = (int *) malloc(mpi_size*sizeof(int));
+    offset = 0;
+    for(i=0; i<mpi_size; i++) {
+      displs[i] = offset;
+      scounts[i] = (i==0 ? A->size1 : prows)*A->size2;
+      offset += scounts[i];
+      printf("%i %i %i\n", i, displs[i]/A->size2, scounts[i]/A->size2);
+    }
+
     if(parent != MPI_COMM_NULL) {
       A->size1 = prows;
-      C->size1 = A->size1;
+      C->size1 = prows;
       C->size2 = B->size2;
-      A->size1 = prows;
-      A->data = (cl_float *) malloc(prows*A->size2*sizeof(cl_float));
+      A->data = (cl_float *) malloc(A->size1*A->size2*sizeof(cl_float));
       B->data = (cl_float *) malloc(B->size1*B->size2*sizeof(cl_float));
-      C->data = (cl_float *) malloc(prows*C->size2*sizeof(cl_float));
+      C->data = (cl_float *) malloc(C->size1*C->size2*sizeof(cl_float));
     }
+
     // Send & Recv A, each node needs prows rows of A
-    MPI_Scatter(&A->data[A->size1*A->size2], prows*A->size2, MPI_FLOAT, A->data, prows*A->size2, MPI_FLOAT, root_argument, intercomm);
+    MPI_Scatterv(&A->data[scounts[1]], &scounts[1], &displs[1], MPI_FLOAT, A->data, A->size1*A->size2, MPI_FLOAT, root_argument, intercomm);
     // Send B in full to each node
     MPI_Bcast(B->data, B->size1*B->size2, MPI_FLOAT, root_argument, intercomm);
   }
@@ -225,12 +238,12 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
 
   if(flags & USE_MPI) {
     // Recv & Send C
-    MPI_Gather(C->data, prows*C->size2, MPI_FLOAT, &C->data[A->size1*A->size2], prows*C->size2, MPI_FLOAT, root_argument, intercomm);
+    MPI_Gatherv(C->data, A->size1*C->size2, MPI_FLOAT, &C->data[scounts[1]], scounts, displs, MPI_FLOAT, root_argument, intercomm);
     // A->size1 might have been overwritten on the parent
     if(parent == MPI_COMM_NULL) {
       A->size1 = saved_Asize1;
     }
-     MPI_Finalize();
+    MPI_Finalize();
   }
 }
 
