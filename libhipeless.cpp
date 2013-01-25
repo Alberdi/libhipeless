@@ -184,7 +184,6 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
       return -1;
     }
     mpi_size = atoi(universe_size);
-    MPI_Init(0, NULL);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
       char* mpi_helper = (char *) "mpihelper";
@@ -231,6 +230,5 @@ int matrix_multiplication(cl_float *C, cl_float *A, cl_float *B, cl_uint rowsA, 
   if(flags & USE_MPI) {
     // Recv & Send C
     MPI_Gather(C, prows*colsB, MPI_FLOAT, C, prows*colsB, MPI_FLOAT, root_argument, intercomm);
-    MPI_Finalize();
   }
 }

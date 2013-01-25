@@ -1,5 +1,6 @@
 #include "libhipeless.h"
 
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -17,6 +18,10 @@ int main(int argc, char* argv[]) {
   int i, j;
   int rowsA, colsA, rowsB, colsB;
   cl_float *A, *B, *C; 
+
+  if(flags & USE_MPI) {
+    MPI_Init(&argc, &argv);
+  }
 
   int max_size = 64;
   srand((unsigned)time(NULL));
@@ -71,5 +76,10 @@ int main(int argc, char* argv[]) {
   //else printf("INCORRECTO: %f (%d, %d)\n", x, rowsA*colsA, rowsA*colsB);
 
   //matrix_print(C, rowsA, colsB);
+
+  if(flags & USE_MPI) {
+    MPI_Finalize();
+  }
+
 
 }
