@@ -208,16 +208,6 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
     MPI_Bcast(&alpha, 1, MPI_FLOAT, root_argument, intercomm);
     MPI_Bcast(&beta, 1, MPI_FLOAT, root_argument, intercomm);
 
-    // Calculate displacement and send count for A and C
-    displs = (int *) malloc(mpi_size*sizeof(int));
-    scounts = (int *) malloc(mpi_size*sizeof(int));
-    offset = 0;
-    for(i=0; i<mpi_size; i++) {
-      displs[i] = offset;
-      scounts[i] = (i==0 ? A->size1 : prows)*A->size2;
-      offset += scounts[i];
-    }
-
     if(parent != MPI_COMM_NULL) {
       A->size1 = prows;
       C->size1 = prows;
@@ -228,7 +218,7 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
     }
 
     // Send & Recv A, each node needs prows rows of A
-    MPI_Scatterv(A->data, &scounts[1], &displs[1], MPI_FLOAT, A->data, A->size1*A->size2, MPI_FLOAT, root_argument, intercomm);
+    MPI_Scatter(&A->data[A->size1*A->size2], prows*A->size2, MPI_FLOAT, A->data, A->size1*A->size2, MPI_FLOAT, root_argument, intercomm);
     // Send B in full to each node
     MPI_Bcast(B->data, B->size1*B->size2, MPI_FLOAT, root_argument, intercomm);
   }
@@ -237,7 +227,7 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
 
   if(flags & USE_MPI) {
     // Recv & Send C
-    MPI_Gatherv(C->data, A->size1*C->size2, MPI_FLOAT, C->data, &scounts[1], &displs[1], MPI_FLOAT, root_argument, intercomm);
+    MPI_Gather(C->data, C->size1*C->size2, MPI_FLOAT, &C->data[A->size1*C->size2], prows*C->size2, MPI_FLOAT, root_argument, intercomm);
     // A->size1 might have been overwritten on the parent
     if(parent == MPI_COMM_NULL) {
       A->size1 = saved_Asize1;
