@@ -216,7 +216,6 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
       displs[i] = offset;
       scounts[i] = (i==0 ? A->size1 : prows)*A->size2;
       offset += scounts[i];
-      printf("%i %i %i\n", i, displs[i]/A->size2, scounts[i]/A->size2);
     }
 
     if(parent != MPI_COMM_NULL) {
@@ -229,7 +228,7 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
     }
 
     // Send & Recv A, each node needs prows rows of A
-    MPI_Scatterv(&A->data[scounts[1]], &scounts[1], &displs[1], MPI_FLOAT, A->data, A->size1*A->size2, MPI_FLOAT, root_argument, intercomm);
+    MPI_Scatterv(A->data, &scounts[1], &displs[1], MPI_FLOAT, A->data, A->size1*A->size2, MPI_FLOAT, root_argument, intercomm);
     // Send B in full to each node
     MPI_Bcast(B->data, B->size1*B->size2, MPI_FLOAT, root_argument, intercomm);
   }
@@ -238,7 +237,7 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
 
   if(flags & USE_MPI) {
     // Recv & Send C
-    MPI_Gatherv(C->data, A->size1*C->size2, MPI_FLOAT, &C->data[scounts[1]], scounts, displs, MPI_FLOAT, root_argument, intercomm);
+    MPI_Gatherv(C->data, A->size1*C->size2, MPI_FLOAT, C->data, &scounts[1], &displs[1], MPI_FLOAT, root_argument, intercomm);
     // A->size1 might have been overwritten on the parent
     if(parent == MPI_COMM_NULL) {
       A->size1 = saved_Asize1;
