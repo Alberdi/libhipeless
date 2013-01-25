@@ -173,7 +173,6 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
       return -1;
     }
     mpi_size = atoi(universe_size);
-    MPI_Init(0, NULL);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
       char* mpi_helper = (char *) "mpihelper";
@@ -232,7 +231,6 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
     if(parent == MPI_COMM_NULL) {
       A->size1 = saved_Asize1;
     }
-    MPI_Finalize();
   }
 }
 

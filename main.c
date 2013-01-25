@@ -1,5 +1,6 @@
 #include "libhipeless.h"
 
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -17,17 +18,15 @@ int main(int argc, char* argv[]) {
   int i, j;
   float_matrix A, B, C; 
 
-  int max_size = 2000;
+  if(flags & USE_MPI) {
+    MPI_Init(&argc, &argv);
+  }
+
+  int max_size = 64;
   srand((unsigned)time(NULL));
   A.size1 = (int)(rand()%max_size)+1;
   A.size2 = (int)(rand()%max_size)+1;
   B.size2 = (int)(rand()%max_size)+1;
-
-
-  A.size1 = 999;
-  A.size2 = 999;
-  B.size2 = 999;
-
 
   B.size1 = A.size2;
   C.size1 = A.size1;
@@ -55,7 +54,7 @@ int main(int argc, char* argv[]) {
     PM printf("\n");
   }
 
-  blas_sgemm(NULL, NULL, 1, &A, &B, 0, &C, flags);
+  blas_sgemm(NULL, NULL, 0.5, &A, &B, 0, &C, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", C.size1, C.size2);
@@ -68,4 +67,7 @@ int main(int argc, char* argv[]) {
     PM printf("\n");
   }
 
+  if(flags & USE_MPI) {
+    MPI_Finalize();
+  }
 }
