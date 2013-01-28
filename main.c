@@ -54,7 +54,13 @@ int main(int argc, char* argv[]) {
     PM printf("\n");
   }
 
-  blas_sgemm(NULL, NULL, 0.5, &A, &B, 0, &C, flags);
+  for(i=0;i<C.size1;i++) {
+    for(j=0;j<C.size2;j++) {
+      C.data[i*C.size2+j] = 10000;
+    }
+  }
+
+  blas_sgemm(NULL, NULL, 0.5, &A, &B, 1, &C, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", C.size1, C.size2);
