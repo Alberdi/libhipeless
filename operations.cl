@@ -53,7 +53,12 @@ __kernel void blas_sgemm(__global float *C, __global const float *A, __global co
       Csub += As[tx][k] * Bs[k][ty];
   }
 
-  if(tx+a < rowsA && ty+b < colsB) // In bounds
-    C[(tx+a)*colsB+(ty+b)] = alpha*Csub + beta*C[(tx+a)*colsB+(ty+b)];
+  if(tx+a < rowsA && ty+b < colsB) { // In bounds
+    if(beta) {
+      C[(tx+a)*colsB+(ty+b)] = alpha*Csub + beta*C[(tx+a)*colsB+(ty+b)];
+    } else {
+      C[(tx+a)*colsB+(ty+b)] = alpha*Csub;
+    }
+  }
 }
 

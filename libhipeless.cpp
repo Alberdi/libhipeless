@@ -28,9 +28,9 @@ int opencl_operation(void *TransA, void *TransB, cl_float alpha, const float_mat
   cl_int errcode;
   cl_context context;
   cl_device_id *devices;
-  cl_command_queue* command_queues;
+  cl_command_queue *command_queues;
   cl_mem memA, memB;
-  cl_mem* memC;
+  cl_mem *memC;
   cl_program program;
   cl_kernel kernel;
 
@@ -74,13 +74,6 @@ int opencl_operation(void *TransA, void *TransB, cl_float alpha, const float_mat
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, B->size1*B->size2*sizeof(cl_float), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
 
-  memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
-  for(i=0; i < num_devices; i++) {
-    rA = i == num_devices-1 ? last_dev_rowsA : dev_rowsA;
-    memC[i] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, rA*B->size2*sizeof(cl_float), NULL, &errcode);
-    checkErr(errcode, "clCreateBufferC");
-  }
-
   source = readKernelFromSource("operations.cl");
   size_t size_source[] = { strlen(source) };
   program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
@@ -93,6 +86,7 @@ int opencl_operation(void *TransA, void *TransB, cl_float alpha, const float_mat
   checkErr(errcode, "clCreateKernel");
    
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
+  memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
     rA = i == num_devices-1 ? last_dev_rowsA : dev_rowsA;
     global_work_size[0] = rA + (rA % BLOCK_SIZE ? BLOCK_SIZE - (rA % BLOCK_SIZE) : 0);
@@ -106,6 +100,14 @@ int opencl_operation(void *TransA, void *TransB, cl_float alpha, const float_mat
 
     errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, B->size1*B->size2*sizeof(cl_float), B->data, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueWriteBufferB");
+
+    memC[i] = clCreateBuffer(context, beta ? CL_MEM_READ_WRITE : CL_MEM_WRITE_ONLY, rA*C->size2*sizeof(cl_float), NULL, &errcode);
+    checkErr(errcode, "clCreateBufferC");
+
+    if(beta) {
+      errcode = clEnqueueWriteBuffer(command_queues[i], memC[i], CL_TRUE, 0, rA*C->size2*sizeof(cl_float), &C->data[i*dev_rowsA*C->size2], 0, NULL, NULL);
+      checkErr(errcode, "clEnqueueWriteBufferC");
+    }
 
     errcode = clSetKernelArg(kernel, 0, sizeof(cl_mem), &memC[i]);
     checkErr(errcode, "clSetKernelArg0");
@@ -139,7 +141,7 @@ int opencl_operation(void *TransA, void *TransB, cl_float alpha, const float_mat
     rA = i == num_devices-1 ? last_dev_rowsA : dev_rowsA;
     clFinish(command_queues[i]);
     errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0,
-      rA*B->size2*sizeof(cl_float), &C->data[i*dev_rowsA*B->size2], 0, NULL, NULL);
+      rA*B->size2*sizeof(cl_float), &C->data[i*dev_rowsA*C->size2], 0, NULL, NULL);
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
@@ -220,6 +222,11 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
     MPI_Scatter(&A->data[A->size1*A->size2], prows*A->size2, MPI_FLOAT, A->data, A->size1*A->size2, MPI_FLOAT, root_argument, intercomm);
     // Send B in full to each node
     MPI_Bcast(B->data, B->size1*B->size2, MPI_FLOAT, root_argument, intercomm);
+
+    if(beta) {
+      // We also need to send C, same rows as A
+      MPI_Scatter(&C->data[A->size1*C->size2], prows*C->size2, MPI_FLOAT, C->data, C->size1*C->size2, MPI_FLOAT, root_argument, intercomm);
+    }
   }
 
   opencl_operation(TransA, TransB, alpha, A, B, beta, C, flags, "blas_sgemm");
