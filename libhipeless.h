@@ -19,5 +19,6 @@ typedef struct {
 
 // C = alpha * A * B + beta * C
 // Single precission/float
-int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, float_matrix *B, cl_float beta, float_matrix *C, unsigned int flags);
-
+void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
+                cl_float alpha, cl_float *a, cl_int lda, cl_float *b, cl_int ldb,
+                cl_float beta, cl_float *c, cl_int ldc, unsigned int flags);

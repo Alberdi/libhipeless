@@ -15,8 +15,8 @@
 
 int main(int argc, char* argv[]) {
   unsigned int flags = USE_CPU | USE_MPI;
-  int i, j;
-  float_matrix A, B, C; 
+  cl_int i, j, m, k, n;
+  cl_float *a, *b, *c;
 
   if(flags & USE_MPI) {
     MPI_Init(&argc, &argv);
@@ -24,52 +24,46 @@ int main(int argc, char* argv[]) {
 
   int max_size = 64;
   srand((unsigned)time(NULL));
-  A.size1 = (int)(rand()%max_size)+1;
-  A.size2 = (int)(rand()%max_size)+1;
-  B.size2 = (int)(rand()%max_size)+1;
+  m = (int)(rand()%max_size)+1;
+  k = (int)(rand()%max_size)+1;
+  n = (int)(rand()%max_size)+1;
 
-  B.size1 = A.size2;
-  C.size1 = A.size1;
-  C.size2 = B.size2;
+  a = (cl_float *) malloc(m*k*sizeof(cl_float));
+  b = (cl_float *) malloc(k*n*sizeof(cl_float));
+  c = (cl_float *) malloc(m*n*sizeof(cl_float));
 
-  A.data = (cl_float *) malloc(A.size1*A.size2*sizeof(cl_float));
-  B.data = (cl_float *) malloc(B.size1*B.size2*sizeof(cl_float));
-  C.data = (cl_float *) malloc(C.size1*C.size2*sizeof(cl_float));
-
-  PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", A.size1, A.size2);
-  for(i=0;i<A.size1;i++) {
-    for(j=0;j<A.size2;j++) {
-      A.data[i*A.size2+j] = (float)(rand() % 256);
-      PM printf("%f ", A.data[i*A.size2+j]);
+  PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", m, k);
+  for(i=0; i<m; i++) {
+    for(j=0; j<k; j++) {
+      a[i*k+j] = (float)(rand() % 256);
+      PM printf("%f ", a[i*k+j]);
     }
     PM printf("\n");
   }
 
-  PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", B.size1, B.size2);
-  for(i=0;i<B.size1;i++) {
-    for(j=0;j<B.size2;j++) {
-      B.data[i*B.size2+j] = (float)(rand() % 256);
-      PM printf("%f ", B.data[i*B.size2+j]);
+  PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", k, n);
+  for(i=0; i<k; i++) {
+    for(j=0; j<n; j++) {
+      b[i*n+j] = (float)(rand() % 256);
+      PM printf("%f ", b[i*n+j]);
     }
     PM printf("\n");
   }
 
-  for(i=0;i<C.size1;i++) {
-    for(j=0;j<C.size2;j++) {
-      C.data[i*C.size2+j] = 10000;
+  for(i=0; i<m; i++) {
+    for(j=0; j<n ;j++) {
+      c[i*n+j] = 10000;
     }
   }
 
-  blas_sgemm(NULL, NULL, 0.5, &A, &B, 1, &C, flags);
+  blas_sgemm('N', 'N', m, n, k, 1, a, m, b, k, 0, c, m, flags);
 
   // Result printing
-  PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", C.size1, C.size2);
-  float x = 0.0;
-  for(i=0; i<C.size1; i++) {
-    for(j=0; j<C.size2; j++) {
-      x += C.data[i*C.size2+j];
-      PM printf("%f ", C.data[i*C.size2+j]);
-    }   
+  PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
+  for(i=0; i<m; i++) {
+    for(j=0; j<n; j++) {
+      PM printf("%f ", c[i*n+j]);
+    }
     PM printf("\n");
   }
 
