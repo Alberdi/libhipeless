@@ -194,9 +194,6 @@ int blas_sgemm(void* TransA, void* TransB, cl_float alpha, float_matrix *A, floa
       B = (float_matrix *) malloc(sizeof(float_matrix));
       C = (float_matrix *) malloc(sizeof(float_matrix));
     }
-  } else {
-    root_argument = 1;
-  }
 
   if(flags & USE_MPI) {
     // Broadcast matrices dimensions
