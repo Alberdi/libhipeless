@@ -181,6 +181,7 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
       intercomm = parent;
       root_argument = 0;
     }
+  }
 
   if(flags & USE_MPI) {
     // Broadcast matrices dimensions
