@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
 
   MPI_Init(&argc, &argv);
 
-  blas_sgemm(NULL, NULL, 0, NULL, NULL, 0, NULL, flags);
+  blas_sgemm('0', '0', 0, 0, 0, 0, NULL, 0, NULL, 0, 0, NULL, 0, flags);
 
   MPI_Finalize();
 }
