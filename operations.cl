@@ -39,14 +39,30 @@ __kernel void blas_sgemm(int nota, int notb, int m, int n, int k, float alpha, _
     rb = i+tx;
     cb = ty+BLOCK_SIZE*by;
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(ra >= m || ca >= k)
-      As[tx][ty] = 0;
-    else
-      As[tx][ty] = a[ra*k+ca];
-    if(rb >= k || cb >= n)
-      Bs[tx][ty] = 0;
-    else
-      Bs[tx][ty] = b[rb*n+cb];
+    if(nota) {
+      if(ra >= m || ca >= k)
+        As[tx][ty] = 0;
+      else
+        As[tx][ty] = a[ra*k+ca];
+    }
+    else {
+      if(ra >= k || ca >= m)
+        As[tx][ty] = 0;
+      else
+        As[tx][ty] = a[ca*m+ra];
+    }
+    if(notb) {
+      if(rb >= k || cb >= n)
+        Bs[tx][ty] = 0;
+      else
+        Bs[tx][ty] = b[rb*n+cb];
+    }
+    else {
+      if(cb >= k || rb >= n)
+        Bs[tx][ty] = 0;
+      else
+        Bs[tx][ty] = b[cb*k+rb];
+    }
     barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int l=0; l<BLOCK_SIZE; l++)
