@@ -34,8 +34,14 @@ __kernel void blas_sgemm(int nota, int notb, int m, int n, int k, float alpha, _
     // each thread loads one element of each matrix
     // Barriers are used for synchronization and to be sure we don't
     // overwrite an address that is going to be used
-    ra = tx+BLOCK_SIZE*bx;
-    ca = i+ty;
+    if(nota) {
+      ra = tx+BLOCK_SIZE*bx;
+      ca = i+ty;
+    }
+    else {
+      ca = tx+BLOCK_SIZE*bx;
+      ra = i+ty;
+    }
     rb = i+tx;
     cb = ty+BLOCK_SIZE*by;
     barrier(CLK_LOCAL_MEM_FENCE);
