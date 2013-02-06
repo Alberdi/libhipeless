@@ -95,7 +95,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
     iter_i = i == num_devices-1 ? last_dev_i : dev_i;
-    global_work_size[0] = iter_i + (iter_i % BLOCK_SIZE ? BLOCK_SIZE - (iter_i % BLOCK_SIZE) : 0);
+    global_work_size[0] = m + (m % BLOCK_SIZE ? BLOCK_SIZE - (m % BLOCK_SIZE) : 0);
 
     command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
