@@ -23,7 +23,7 @@ const char* readKernelFromSource(const char* source) {
 
 int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_float alpha, cl_float *a, cl_int lda,
                      cl_float *b, cl_int ldb, cl_float beta, cl_float *c, cl_int ldc, unsigned int flags, const char* kernelfunction) {
-  int i;
+  int i, l;
   cl_uint num_devices;
   cl_int errcode;
   cl_context context;
@@ -94,7 +94,16 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
     command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
 
-    errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_m*k*sizeof(cl_float), &a[i*dev_m*k], 0, NULL, NULL);
+    if(nota) {
+      // Load in A full consecutive rows
+      errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_m*k*sizeof(cl_float), &a[i*dev_m*k], 0, NULL, NULL);
+    }
+    else {
+      // Load in A full consecutive columns
+      for(l=0; l<k; l++) {
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(cl_float), iter_m*sizeof(cl_float), &a[l*m+i*dev_m], 0, NULL, NULL);
+      }
+    }
     checkErr(errcode, "clEnqueueWriteBufferA");
 
     errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, k*n*sizeof(cl_float), b, 0, NULL, NULL);
@@ -110,7 +119,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
   
     checkErr(clSetKernelArg(kernel, 0, sizeof(cl_int), &nota), "clSetKernelArg0");
     checkErr(clSetKernelArg(kernel, 1, sizeof(cl_int), &notb), "clSetKernelArg1");
-    checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &m), "clSetKernelArg2");
+    checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &iter_m), "clSetKernelArg2");
     checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), &n), "clSetKernelArg3");
     checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &k), "clSetKernelArg4");
     checkErr(clSetKernelArg(kernel, 5, sizeof(cl_float), &alpha), "clSetKernelArg5");

@@ -17,6 +17,8 @@ int main(int argc, char* argv[]) {
   unsigned int flags = USE_CPU;
   cl_int i, j, m, k, n;
   cl_float *a, *b, *c;
+  cl_char transa;
+  int rowsa, colsa;
 
   if(flags & USE_MPI) {
     MPI_Init(&argc, &argv);
@@ -32,11 +34,21 @@ int main(int argc, char* argv[]) {
   b = (cl_float *) malloc(k*n*sizeof(cl_float));
   c = (cl_float *) malloc(m*n*sizeof(cl_float));
 
-  PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", m, k);
-  for(i=0; i<m; i++) {
-    for(j=0; j<k; j++) {
-      a[i*k+j] = (float)(rand() % 256);
-      PM printf("%f ", a[i*k+j]);
+  transa = 'T';
+  if(transa == 'N') {
+    rowsa = m;
+    colsa = k;
+  }
+  else {
+    rowsa = k;
+    colsa = m;
+  }
+
+  PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
+  for(i=0; i<rowsa; i++) {
+    for(j=0; j<colsa; j++) {
+      a[i*colsa+j] = 1;//(float)(rand() % 256);
+      PM printf("%f ", a[i*colsa+j]);
     }
     PM printf("\n");
   }
@@ -44,7 +56,7 @@ int main(int argc, char* argv[]) {
   PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", k, n);
   for(i=0; i<k; i++) {
     for(j=0; j<n; j++) {
-      b[i*n+j] = (float)(rand() % 256);
+      b[i*n+j] = 1;//(float)(rand() % 256);
       PM printf("%f ", b[i*n+j]);
     }
     PM printf("\n");
@@ -56,7 +68,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  blas_sgemm('N', 'N', m, n, k, 1, a, m, b, k, 0, c, m, flags);
+  blas_sgemm(transa, 'N', m, n, k, 1, a, m, b, k, 0, c, m, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
