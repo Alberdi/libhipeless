@@ -65,16 +65,9 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
   errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, size_devices, devices, NULL);
   checkErr(errcode, "clGetContextInfo3");
 
-  if(nota) {
-    dev_i = m/num_devices;
-    last_dev_i = m - dev_i*(num_devices-1);
-    memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_i*k*sizeof(cl_float), NULL, &errcode);
-  }
-  else {
-    dev_i = k/num_devices;
-    last_dev_i = k - dev_i*(num_devices-1);
-    memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_i*m*sizeof(cl_float), NULL, &errcode);
-  }
+  dev_i = m/num_devices;
+  last_dev_i = m - dev_i*(num_devices-1);
+  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_i*k*sizeof(cl_float), NULL, &errcode);
   checkErr(errcode, "clCreateBufferA");
 
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, k*n*sizeof(cl_float), NULL, &errcode);
@@ -95,7 +88,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
     iter_i = i == num_devices-1 ? last_dev_i : dev_i;
-    global_work_size[0] = m + (m % BLOCK_SIZE ? BLOCK_SIZE - (m % BLOCK_SIZE) : 0);
+    global_work_size[0] = iter_i + (iter_i % BLOCK_SIZE ? BLOCK_SIZE - (iter_i % BLOCK_SIZE) : 0);
 
     command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
@@ -104,7 +97,9 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
       errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_i*k*sizeof(cl_float), &a[i*dev_i*k], 0, NULL, NULL);
     }
     else {
-      errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_i*m*sizeof(cl_float), &a[i*dev_i*m], 0, NULL, NULL);
+      for(int l=0; l < k; l++) {
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_i*sizeof(cl_float), iter_i*sizeof(cl_float), &a[l*m+i*dev_i], 0, NULL, NULL);
+      }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
 
@@ -121,7 +116,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
   
     checkErr(clSetKernelArg(kernel, 0, sizeof(cl_int), &nota), "clSetKernelArg0");
     checkErr(clSetKernelArg(kernel, 1, sizeof(cl_int), &notb), "clSetKernelArg1");
-    checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &m), "clSetKernelArg2");
+    checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &iter_i), "clSetKernelArg2");
     checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), &n), "clSetKernelArg3");
     checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &k), "clSetKernelArg4");
     checkErr(clSetKernelArg(kernel, 5, sizeof(cl_float), &alpha), "clSetKernelArg5");
@@ -221,29 +216,35 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
     MPI_Bcast(&nota, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&notb, 1, MPI_INTEGER, root_argument, intercomm);
 
+    spawns_m = nota ? spawns_rowsa : spawns_colsa;
+
     if(parent != MPI_COMM_NULL) {
       rowsa = spawns_rowsa;
       colsa = spawns_colsa;
+      if(nota) {
+        m = rowsa;
+        k = colsa;
+      }
+      else {
+        m = colsa;
+        k = rowsa;
+      }
+      n = colsb;
       a = (cl_float *) malloc(rowsa*colsa*sizeof(cl_float));
       b = (cl_float *) malloc(rowsb*colsb*sizeof(cl_float));
       c = (cl_float *) malloc(m*n*sizeof(cl_float));
+    }
+    else {
+      m = m - spawns_m*(mpi_size-1);
     }
 
     if(nota) {
       // Send & Recv A, each node needs spawns_m rows of A with k columns
       MPI_Scatter(&a[rowsa*colsa], spawns_rowsa*spawns_colsa, MPI_FLOAT, a, rowsa*colsa, MPI_FLOAT, root_argument, intercomm);
-      m = rowsa;
-      k = colsa;
-      n = colsb;
-      spawns_m = spawns_rowsa;
     }
     else {
       // Send & Recv A, each node needs m rows of A with spawns_k columns
       MPI_Scatter(&a[colsa], 1, transtype, a, rowsa*colsa, MPI_FLOAT, root_argument, intercomm);
-      m = colsa;
-      k = rowsa;
-      n = colsb;
-      spawns_m = spawns_colsa;
     }
     // Send B in full to each node
     MPI_Bcast(b, rowsb*colsb, MPI_FLOAT, root_argument, intercomm);
