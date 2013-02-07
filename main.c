@@ -14,7 +14,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_CPU;
+  unsigned int flags = USE_CPU | USE_MPI;
   cl_int i, j, m, k, n;
   cl_float *a, *b, *c;
   cl_char transa;
@@ -26,9 +26,9 @@ int main(int argc, char* argv[]) {
 
   int max_size = 64;
   srand((unsigned)time(NULL));
-  m = (int)(rand()%max_size)+1;
-  k = (int)(rand()%max_size)+1;
-  n = (int)(rand()%max_size)+1;
+  m = (int)(rand()%max_size)+16;
+  k = (int)(rand()%max_size)+16;
+  n = (int)(rand()%max_size)+16;
 
   a = (cl_float *) malloc(m*k*sizeof(cl_float));
   b = (cl_float *) malloc(k*n*sizeof(cl_float));
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
   for(i=0; i<rowsa; i++) {
     for(j=0; j<colsa; j++) {
       a[i*colsa+j] = 1;//(float)(rand() % 256);
-      PM printf("%f ", a[i*colsa+j]);
+      PM printf("%.0f ", a[i*colsa+j]);
     }
     PM printf("\n");
   }
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
   for(i=0; i<k; i++) {
     for(j=0; j<n; j++) {
       b[i*n+j] = 1;//(float)(rand() % 256);
-      PM printf("%f ", b[i*n+j]);
+      PM printf("%.0f ", b[i*n+j]);
     }
     PM printf("\n");
   }
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
   for(i=0; i<m; i++) {
     for(j=0; j<n; j++) {
-      PM printf("%f ", c[i*n+j]);
+      PM printf("%.0f ", c[i*n+j]);
     }
     PM printf("\n");
   }
