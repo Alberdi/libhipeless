@@ -96,12 +96,19 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
 
     if(nota) {
       // Load in A full consecutive rows
-      errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_m*k*sizeof(cl_float), &a[i*dev_m*k], 0, NULL, NULL);
+      if(k == lda) {
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_m*k*sizeof(cl_float), &a[i*dev_m*k], 0, NULL, NULL);
+      }
+      else {
+        for(l=0; l<iter_m; l++) {
+          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*k*sizeof(cl_float), k*sizeof(cl_float), &a[(i*dev_m+l)*lda], 0, NULL, NULL);
+        }
+      }
     }
     else {
       // Load in A full consecutive columns
       for(l=0; l<k; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(cl_float), iter_m*sizeof(cl_float), &a[l*m+i*dev_m], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(cl_float), iter_m*sizeof(cl_float), &a[l*lda+i*dev_m], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
@@ -124,12 +131,9 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
     checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &k), "clSetKernelArg4");
     checkErr(clSetKernelArg(kernel, 5, sizeof(cl_float), &alpha), "clSetKernelArg5");
     checkErr(clSetKernelArg(kernel, 6, sizeof(cl_mem), &memA), "clSetKernelArg6");
-    checkErr(clSetKernelArg(kernel, 7, sizeof(cl_int), &lda), "clSetKernelArg7");
-    checkErr(clSetKernelArg(kernel, 8, sizeof(cl_mem), &memB), "clSetKernelArg8");
-    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_int), &ldb), "clSetKernelArg9");
-    checkErr(clSetKernelArg(kernel, 10, sizeof(cl_float), &beta), "clSetKernelArg10");
-    checkErr(clSetKernelArg(kernel, 11, sizeof(cl_mem), &memC[i]), "clSetKernelArg11");
-    checkErr(clSetKernelArg(kernel, 12, sizeof(cl_int), &ldc), "clSetKernelArg12");
+    checkErr(clSetKernelArg(kernel, 7, sizeof(cl_mem), &memB), "clSetKernelArg8");
+    checkErr(clSetKernelArg(kernel, 8, sizeof(cl_float), &beta), "clSetKernelArg10");
+    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memC[i]), "clSetKernelArg11");
 
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");
@@ -178,12 +182,16 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
       root_argument = MPI_ROOT;
       spawns_m = m/mpi_size;
-      if(!nota) {
-        MPI_Type_vector(k, spawns_m, m, MPI_FLOAT, &transtype);
-        // We need to resize the type so Scatter can known the real size of the elements.
-        MPI_Type_create_resized(transtype, 0, sizeof(float), &transtype);
-        MPI_Type_commit(&transtype);
+      if(nota) {
+        MPI_Type_vector(spawns_m, k, lda, MPI_FLOAT, &transtype);
+        MPI_Type_create_resized(transtype, 0, spawns_m*lda*sizeof(float), &transtype);
       }
+      else {
+        MPI_Type_vector(k, spawns_m, lda, MPI_FLOAT, &transtype);
+        MPI_Type_create_resized(transtype, 0, spawns_m*sizeof(float), &transtype);
+      }
+      // We need to resize the type so Scatter can known the real size of the elements.
+      MPI_Type_commit(&transtype);
       m = m - spawns_m*(mpi_size-1);
     }
     else {
@@ -204,7 +212,9 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
     MPI_Bcast(&notb, 1, MPI_INTEGER, root_argument, intercomm);
 
     if(parent != MPI_COMM_NULL) {
+      flags |= NON_MPI_ROOT;
       m = spawns_m;
+      lda = nota ? k : m;
       a = (cl_float *) malloc(m*k*sizeof(cl_float));
       b = (cl_float *) malloc(k*n*sizeof(cl_float));
       c = (cl_float *) malloc(m*n*sizeof(cl_float));
@@ -212,7 +222,7 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
 
     if(nota) {
       // Send & Recv A, each node needs spawns_m rows of A
-      MPI_Scatter(&a[m*k], spawns_m*k, MPI_FLOAT, a, m*k, MPI_FLOAT, root_argument, intercomm);
+      MPI_Scatter(&a[m*lda], 1, transtype, a, m*k, MPI_FLOAT, root_argument, intercomm);
     }
     else {
       // Send & Recv A, each node needs spawns_m columns of A

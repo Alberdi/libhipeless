@@ -16,6 +16,7 @@
 int main(int argc, char* argv[]) {
   unsigned int flags = USE_CPU | USE_MPI;
   cl_int i, j, m, k, n;
+  cl_int lda;
   cl_float *a, *b, *c;
   cl_char transa;
   int rowsa, colsa;
@@ -30,7 +31,7 @@ int main(int argc, char* argv[]) {
   k = (int)(rand()%max_size)+16;
   n = (int)(rand()%max_size)+16;
 
-  a = (cl_float *) malloc(m*k*sizeof(cl_float));
+  a = (cl_float *) malloc(lda*k*sizeof(cl_float));
   b = (cl_float *) malloc(k*n*sizeof(cl_float));
   c = (cl_float *) malloc(m*n*sizeof(cl_float));
 
@@ -43,12 +44,13 @@ int main(int argc, char* argv[]) {
     rowsa = k;
     colsa = m;
   }
+  lda = colsa;+(rand()%max_size)+1;
 
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
     for(j=0; j<colsa; j++) {
-      a[i*colsa+j] = (float)(rand() % 256);
-      PM printf("%.0f ", a[i*colsa+j]);
+      a[i*lda+j] = (float)(rand() % 256);
+      PM printf("%.0f ", a[i*lda+j]);
     }
     PM printf("\n");
   }
@@ -68,7 +70,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  blas_sgemm(transa, 'N', m, n, k, 1, a, m, b, k, 0, c, m, flags);
+  blas_sgemm(transa, 'N', m, n, k, 1, a, lda, b, k, 0, c, m, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
