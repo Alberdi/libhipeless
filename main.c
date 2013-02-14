@@ -31,10 +31,6 @@ int main(int argc, char* argv[]) {
   k = (int)(rand()%max_size)+16;
   n = (int)(rand()%max_size)+16;
 
-  a = (cl_float *) malloc(lda*k*sizeof(cl_float));
-  b = (cl_float *) malloc(k*n*sizeof(cl_float));
-  c = (cl_float *) malloc(m*n*sizeof(cl_float));
-
   transa = 'T';
   if(transa == 'N') {
     rowsa = m;
@@ -44,7 +40,11 @@ int main(int argc, char* argv[]) {
     rowsa = k;
     colsa = m;
   }
-  lda = colsa;+(rand()%max_size)+1;
+  lda = colsa+(rand()%max_size)+1;
+
+  a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
+  b = (cl_float *) malloc(k*n*sizeof(cl_float));
+  c = (cl_float *) malloc(m*n*sizeof(cl_float));
 
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
