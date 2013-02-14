@@ -14,12 +14,12 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_CPU | USE_MPI;
+  unsigned int flags = USE_GPU;
   cl_int i, j, m, k, n;
-  cl_int lda;
+  cl_int lda, ldb;
   cl_float *a, *b, *c;
-  cl_char transa;
-  int rowsa, colsa;
+  cl_char transa, transb;
+  int rowsa, colsa, rowsb, colsb;
 
   if(flags & USE_MPI) {
     MPI_Init(&argc, &argv);
@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
   k = (int)(rand()%max_size)+16;
   n = (int)(rand()%max_size)+16;
 
-  transa = 'T';
+  transa = 'N';
   if(transa == 'N') {
     rowsa = m;
     colsa = k;
@@ -42,8 +42,19 @@ int main(int argc, char* argv[]) {
   }
   lda = colsa+(rand()%max_size)+1;
 
+  transb = 'T';
+  if(transb == 'N') {
+    rowsb = k;
+    colsb = n;
+  }
+  else {
+    rowsb = n;
+    colsb = k;
+  }
+  ldb = colsb;
+
   a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
-  b = (cl_float *) malloc(k*n*sizeof(cl_float));
+  b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
   c = (cl_float *) malloc(m*n*sizeof(cl_float));
 
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
@@ -55,7 +66,7 @@ int main(int argc, char* argv[]) {
     PM printf("\n");
   }
 
-  PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", k, n);
+  PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<k; i++) {
     for(j=0; j<n; j++) {
       b[i*n+j] = (float)(rand() % 256);
@@ -70,7 +81,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  blas_sgemm(transa, 'N', m, n, k, 1, a, lda, b, k, 0, c, m, flags);
+  blas_sgemm(transa, transb, m, n, k, 1, a, lda, b, k, 0, c, m, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);

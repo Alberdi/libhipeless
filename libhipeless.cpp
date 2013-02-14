@@ -95,8 +95,9 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
     checkErr(errcode, "clCreateCommandQueue");
 
     if(nota) {
-      // Load in A full consecutive rows
+      // Load full consecutive rows of a
       if(k == lda) {
+        // In this case, we can write it all in one call
         errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_m*k*sizeof(cl_float), &a[i*dev_m*k], 0, NULL, NULL);
       }
       else {
@@ -106,7 +107,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
       }
     }
     else {
-      // Load in A full consecutive columns
+      // Load full consecutive columns of a
       for(l=0; l<k; l++) {
         errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(cl_float), iter_m*sizeof(cl_float), &a[l*lda+i*dev_m], 0, NULL, NULL);
       }

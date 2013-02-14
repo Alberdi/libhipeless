@@ -47,15 +47,12 @@ __kernel void blas_sgemm(int nota, int notb, int m, int n, int k, float alpha, _
       else
         As[tx][ty] = a[ca*m+ra];
     }
-    if(notb) {
-      if(rb >= k || cb >= n)
-        Bs[tx][ty] = 0;
-      else
-        Bs[tx][ty] = b[rb*n+cb];
-    }
+
+    if(rb >= k || cb >= n)
+      Bs[tx][ty] = 0;
     else {
-      if(cb >= k || rb >= n)
-        Bs[tx][ty] = 0;
+      if(notb)
+        Bs[tx][ty] = b[rb*n+cb];
       else
         Bs[tx][ty] = b[cb*k+rb];
     }
