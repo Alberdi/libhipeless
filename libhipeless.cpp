@@ -134,11 +134,20 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
     }
     checkErr(errcode, "clEnqueueWriteBufferB");
 
+    // Load full consecutive rows of c
     memC[i] = clCreateBuffer(context, beta ? CL_MEM_READ_WRITE : CL_MEM_WRITE_ONLY, iter_m*n*sizeof(cl_float), NULL, &errcode);
     checkErr(errcode, "clCreateBufferC");
 
     if(beta) {
-      errcode = clEnqueueWriteBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(cl_float), &c[i*dev_m*n], 0, NULL, NULL);
+      if(n == ldc) {
+        // In this case, we can write it all in one call
+        errcode = clEnqueueWriteBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(cl_float), &c[i*dev_m*n], 0, NULL, NULL);
+      }
+      else {
+        for(l=0; l<iter_m; l++) {
+          errcode = clEnqueueWriteBuffer(command_queues[i], memC[i], CL_TRUE, l*n*sizeof(cl_float), n*sizeof(cl_float), &c[(l+i*dev_m)*ldc], 0, NULL, NULL);
+        }
+      }
       checkErr(errcode, "clEnqueueWriteBufferC");
     }
   
@@ -160,7 +169,14 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
   for(i=0; i < num_devices; i++) {
     iter_m = i == num_devices-1 ? last_dev_m : dev_m;
     clFinish(command_queues[i]);
-    errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(cl_float), &c[i*dev_m*n], 0, NULL, NULL);
+    if(n == ldc) {
+      errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(cl_float), &c[i*dev_m*ldc], 0, NULL, NULL);
+    }
+    else {
+      for(l=0; l<iter_m; l++) {
+        errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, l*n*sizeof(cl_float), n*sizeof(cl_float), &c[(l+i*dev_m)*ldc], 0, NULL, NULL);
+      }
+    }
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
