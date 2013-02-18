@@ -165,7 +165,7 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
 
   int root_argument, mpi_size, spawns_m, nota, notb;
   MPI_Comm intercomm, parent;
-  MPI_Datatype transtype;
+  MPI_Datatype transtype_a, transtype_b;
 
   nota = transa == 'N' || transa == 'n';
   notb = transb == 'N' || transb == 'n';
@@ -183,16 +183,25 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
       root_argument = MPI_ROOT;
       spawns_m = m/mpi_size;
+      // We need to resize the types so Scatter can know the real size of the elements.
       if(nota) {
-        MPI_Type_vector(spawns_m, k, lda, MPI_FLOAT, &transtype);
-        MPI_Type_create_resized(transtype, 0, spawns_m*lda*sizeof(float), &transtype);
+        MPI_Type_vector(spawns_m, k, lda, MPI_FLOAT, &transtype_a);
+        MPI_Type_create_resized(transtype_a, 0, spawns_m*lda*sizeof(float), &transtype_a);
       }
       else {
-        MPI_Type_vector(k, spawns_m, lda, MPI_FLOAT, &transtype);
-        MPI_Type_create_resized(transtype, 0, spawns_m*sizeof(float), &transtype);
+        MPI_Type_vector(k, spawns_m, lda, MPI_FLOAT, &transtype_a);
+        MPI_Type_create_resized(transtype_a, 0, spawns_m*sizeof(float), &transtype_a);
       }
-      // We need to resize the type so Scatter can known the real size of the elements.
-      MPI_Type_commit(&transtype);
+      MPI_Type_commit(&transtype_a);
+      if(notb) {
+        MPI_Type_vector(k, n, ldb, MPI_FLOAT, &transtype_b);
+        MPI_Type_create_resized(transtype_b, 0, k*ldb*sizeof(float), &transtype_b);
+      }
+      else {
+        MPI_Type_vector(n, k, ldb, MPI_FLOAT, &transtype_b);
+        MPI_Type_create_resized(transtype_b, 0, k*sizeof(float), &transtype_b);
+      }
+      MPI_Type_commit(&transtype_b);
       m = m - spawns_m*(mpi_size-1);
     }
     else {
@@ -216,6 +225,7 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
       flags |= NON_MPI_ROOT;
       m = spawns_m;
       lda = nota ? k : m;
+      ldb = notb ? n : k;
       a = (cl_float *) malloc(m*k*sizeof(cl_float));
       b = (cl_float *) malloc(k*n*sizeof(cl_float));
       c = (cl_float *) malloc(m*n*sizeof(cl_float));
@@ -223,15 +233,15 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
 
     if(nota) {
       // Send & Recv A, each node needs spawns_m rows of A
-      MPI_Scatter(&a[m*lda], 1, transtype, a, m*k, MPI_FLOAT, root_argument, intercomm);
+      MPI_Scatter(&a[m*lda], 1, transtype_a, a, m*k, MPI_FLOAT, root_argument, intercomm);
     }
     else {
       // Send & Recv A, each node needs spawns_m columns of A
-      MPI_Scatter(&a[m], 1, transtype, a, spawns_m*k, MPI_FLOAT, root_argument, intercomm);
+      MPI_Scatter(&a[m], 1, transtype_a, a, spawns_m*k, MPI_FLOAT, root_argument, intercomm);
     }
 
     // Send B in full to each node
-    MPI_Bcast(b, k*n, MPI_FLOAT, root_argument, intercomm);
+    MPI_Bcast(b, 1, transtype_b, root_argument, intercomm);
 
     if(beta) {
       // We also need to send C, same rows as non transposed A
