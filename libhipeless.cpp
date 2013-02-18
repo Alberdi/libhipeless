@@ -114,7 +114,24 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
 
-    errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, k*n*sizeof(cl_float), b, 0, NULL, NULL);
+    if(notb) {
+      // Load full consecutive rows of b
+      if(n == lda) {
+        // In this case, we can write it all in one call
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, k*n*sizeof(cl_float), b, 0, NULL, NULL);
+      }
+      else {
+        for(l=0; l<k; l++) {
+          errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(cl_float), n*sizeof(cl_float), &b[l*ldb], 0, NULL, NULL);
+        }
+      }
+    }
+    else {
+      // Load full consecutive columns of b
+      for(l=0; l<n; l++) {
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*k*sizeof(cl_float), k*sizeof(cl_float), &b[l*ldb], 0, NULL, NULL);
+      }
+    }
     checkErr(errcode, "clEnqueueWriteBufferB");
 
     memC[i] = clCreateBuffer(context, beta ? CL_MEM_READ_WRITE : CL_MEM_WRITE_ONLY, iter_m*n*sizeof(cl_float), NULL, &errcode);
