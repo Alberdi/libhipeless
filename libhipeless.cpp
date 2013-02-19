@@ -274,7 +274,14 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
     }
 
     // Send B in full to each node
-    MPI_Bcast(b, 1, transtype_b, root_argument, intercomm);
+    if(parent == MPI_COMM_NULL) {
+      // We need to use the custom datatype to send
+      MPI_Bcast(b, 1, transtype_b, root_argument, intercomm);
+    }
+    else {
+      // But we can receive a k*n array of floats
+      MPI_Bcast(b, k*n, MPI_FLOAT, root_argument, intercomm);
+    }
 
     if(beta) {
       // We also need to send C, same rows as non transposed A
