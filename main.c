@@ -16,7 +16,7 @@
 int main(int argc, char* argv[]) {
   unsigned int flags = USE_GPU;
   cl_int i, j, m, k, n;
-  cl_int lda, ldb;
+  cl_int lda, ldb, ldc;
   cl_float *a, *b, *c;
   cl_char transa, transb;
   int rowsa, colsa, rowsb, colsb;
@@ -52,10 +52,11 @@ int main(int argc, char* argv[]) {
     colsb = k;
   }
   ldb = colsb+(rand()%max_size)+1;
+  ldc = n+(rand()%max_size)+1;
 
   a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
   b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
-  c = (cl_float *) malloc(m*n*sizeof(cl_float));
+  c = (cl_float *) malloc(m*ldc*sizeof(cl_float));
 
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
@@ -77,17 +78,17 @@ int main(int argc, char* argv[]) {
 
   for(i=0; i<m; i++) {
     for(j=0; j<n ;j++) {
-      c[i*n+j] = 10000;
+      c[i*ldc+j] = 10000;
     }
   }
 
-  blas_sgemm(transa, transb, m, n, k, 1, a, lda, b, ldb, 0, c, m, flags);
+  blas_sgemm(transa, transb, m, n, k, 1, a, lda, b, ldb, 1.5, c, ldc, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
   for(i=0; i<m; i++) {
     for(j=0; j<n; j++) {
-      PM printf("%.0f ", c[i*n+j]);
+      PM printf("%.0f ", c[i*ldc+j]);
     }
     PM printf("\n");
   }
