@@ -11,12 +11,6 @@
 #define USE_MPI 0x04
 #define NON_MPI_ROOT 0x08
 
-typedef struct {
-  size_t size1;
-  size_t size2;
-  cl_float *data;
-} float_matrix;
-
 // C = alpha * A * B + beta * C
 // Single precission/float
 void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
