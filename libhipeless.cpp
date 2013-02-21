@@ -302,6 +302,11 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
   if(flags & USE_MPI) {
     // Recv & Send C
     MPI_Gather(c, m*n, MPI_FLOAT, &c[m*ldc], 1, transtype_c, root_argument, intercomm);
+    if(parent != MPI_COMM_NULL) {
+      free(a);
+      free(b);
+      free(c);
+    }
   }
 }
 
