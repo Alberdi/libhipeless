@@ -196,19 +196,24 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
                 number beta, number *c, cl_int ldc, unsigned int flags) {
 
   int root_argument, mpi_size, spawns_m, nota, notb;
-  char operation[11];
+  char operation[OPERATION_SIZE];
+  int function;
   MPI_Comm intercomm, parent;
   MPI_Datatype transtype_a, transtype_b, transtype_c, mpi_number;
 
+  function = sizeof(number) == sizeof(cl_float) ? SGEMM : DGEMM;
+  strcpy(operation, function == SGEMM ? "blas_sgemm" : "blas_dgemm");
+
   nota = transa == 'N' || transa == 'n';
   notb = transb == 'N' || transb == 'n';
+
   if(flags & USE_MPI) {
     char* universe_size = getenv("MPI_UNIVERSE_SIZE");
     if(universe_size == NULL) {
       printf("MPI_UNIVERSE_SIZE is not set\n");
       return;
     }
-    mpi_number = sizeof(number) == sizeof(cl_float) ? MPI_FLOAT : MPI_DOUBLE;
+    mpi_number = function == SGEMM ? MPI_FLOAT : MPI_DOUBLE;
     mpi_size = atoi(universe_size);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
@@ -217,6 +222,8 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
       root_argument = MPI_ROOT;
       spawns_m = m/mpi_size;
+
+      MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
 
       // We need to resize the types so MPI can know the real size of the elements.
       if(nota) {
@@ -298,7 +305,6 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
     }
   }
   
-  strcpy(operation, sizeof(number) == sizeof(cl_float) ? "blas_sgemm" : "blas_dgemm");
   opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
 
   if(flags & USE_MPI) {
