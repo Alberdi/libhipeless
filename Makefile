@@ -2,22 +2,13 @@
 #FLAGS = -O3 -L /opt/AMDAPP/lib/x86_64/ -l OpenCL -I /opt/cuda/include/
 FLAGS = -O3 -L /opt/AMDAPP/lib/x86_64/ -l OpenCL -I /opt/AMDAPP/include/
 
-all: libhipeless.o main mpihelper test
+all: main mpihelper test
 
-main: main.o libhipeless.o
-	mpic++ -o main main.o libhipeless.o $(FLAGS)
+main: main.c libhipeless.h
+	mpic++ -o main main.c libhipeless.h $(FLAGS)
 
-main.o: main.c libhipeless.h
-	mpic++ -c main.c $(FLAGS)
-
-mpihelper: mpihelper.o libhipeless.o
-	mpic++ -o mpihelper mpihelper.o libhipeless.o $(FLAGS)
-
-mpihelper.o: mpihelper.cpp libhipeless.h
-	mpic++ -c mpihelper.cpp $(FLAGS)
-
-libhipeless.o: libhipeless.cpp libhipeless.h
-	mpic++ -c libhipeless.cpp $(FLAGS)
+mpihelper: mpihelper.cpp libhipeless.h
+	mpic++ -o mpihelper mpihelper.cpp libhipeless.h $(FLAGS)
 
 test: test.cpp
 	g++ -o test test.cpp $(FLAGS)
