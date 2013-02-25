@@ -14,10 +14,11 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_GPU;
+  unsigned int flags = USE_CPU | USE_MPI;
   cl_int i, j, m, k, n;
   cl_int lda, ldb, ldc;
   cl_float *a, *b, *c;
+  cl_float alpha, beta;
   cl_char transa, transb;
   int rowsa, colsa, rowsb, colsb;
 
@@ -82,7 +83,9 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  blas_sgemm(transa, transb, m, n, k, 1, a, lda, b, ldb, 1.5, c, ldc, flags);
+  alpha = 1;
+  beta = 1.5;
+  blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);

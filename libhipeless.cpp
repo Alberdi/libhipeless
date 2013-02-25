@@ -5,8 +5,6 @@
 #include <string.h>
 #include <mpi.h>
 
-#include "libhipeless.h"
-
 inline void checkErr(cl_int errcode, const char* name) {
   if(errcode != CL_SUCCESS) {
     std::cerr << "ERROR: " << name << " (" << errcode << ")" << std::endl;
@@ -21,8 +19,9 @@ const char* readKernelFromSource(const char* source) {
     return sourceString.c_str();
 }
 
-int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_float alpha, cl_float *a, cl_int lda,
-                     cl_float *b, cl_int ldb, cl_float beta, cl_float *c, cl_int ldc, unsigned int flags, const char* kernelfunction) {
+template <typename number>
+int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number alpha, number *a, cl_int lda,
+                     number *b, cl_int ldb, number beta, number *c, cl_int ldc, unsigned int flags, const char* kernelfunction) {
   int i, l;
   cl_uint num_devices;
   cl_int errcode;
@@ -68,10 +67,10 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
   dev_m = m/num_devices;
   last_dev_m = m - dev_m*(num_devices-1);
 
-  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_m*k*sizeof(cl_float), NULL, &errcode);
+  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_m*k*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferA");
 
-  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, k*n*sizeof(cl_float), NULL, &errcode);
+  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, k*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
 
   source = readKernelFromSource("operations.cl");
@@ -98,18 +97,18 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
       // Load full consecutive rows of a
       if(k == lda) {
         // In this case, we can write it all in one call
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_m*k*sizeof(cl_float), &a[i*dev_m*k], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_m*k*sizeof(number), &a[i*dev_m*k], 0, NULL, NULL);
       }
       else {
         for(l=0; l<iter_m; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*k*sizeof(cl_float), k*sizeof(cl_float), &a[(i*dev_m+l)*lda], 0, NULL, NULL);
+          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*k*sizeof(number), k*sizeof(number), &a[(i*dev_m+l)*lda], 0, NULL, NULL);
         }
       }
     }
     else {
       // Load full consecutive columns of a
       for(l=0; l<k; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(cl_float), iter_m*sizeof(cl_float), &a[l*lda+i*dev_m], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(number), iter_m*sizeof(number), &a[l*lda+i*dev_m], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
@@ -118,34 +117,34 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
       // Load full consecutive rows of b
       if(n == lda) {
         // In this case, we can write it all in one call
-        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, k*n*sizeof(cl_float), b, 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, k*n*sizeof(number), b, 0, NULL, NULL);
       }
       else {
         for(l=0; l<k; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(cl_float), n*sizeof(cl_float), &b[l*ldb], 0, NULL, NULL);
+          errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[l*ldb], 0, NULL, NULL);
         }
       }
     }
     else {
       // Load full consecutive columns of b
       for(l=0; l<n; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*k*sizeof(cl_float), k*sizeof(cl_float), &b[l*ldb], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*k*sizeof(number), k*sizeof(number), &b[l*ldb], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferB");
 
     // Load full consecutive rows of c
-    memC[i] = clCreateBuffer(context, beta ? CL_MEM_READ_WRITE : CL_MEM_WRITE_ONLY, iter_m*n*sizeof(cl_float), NULL, &errcode);
+    memC[i] = clCreateBuffer(context, beta ? CL_MEM_READ_WRITE : CL_MEM_WRITE_ONLY, iter_m*n*sizeof(number), NULL, &errcode);
     checkErr(errcode, "clCreateBufferC");
 
     if(beta) {
       if(n == ldc) {
         // In this case, we can write it all in one call
-        errcode = clEnqueueWriteBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(cl_float), &c[i*dev_m*n], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(number), &c[i*dev_m*n], 0, NULL, NULL);
       }
       else {
         for(l=0; l<iter_m; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memC[i], CL_TRUE, l*n*sizeof(cl_float), n*sizeof(cl_float), &c[(l+i*dev_m)*ldc], 0, NULL, NULL);
+          errcode = clEnqueueWriteBuffer(command_queues[i], memC[i], CL_TRUE, l*n*sizeof(number), n*sizeof(number), &c[(l+i*dev_m)*ldc], 0, NULL, NULL);
         }
       }
       checkErr(errcode, "clEnqueueWriteBufferC");
@@ -156,10 +155,10 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
     checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &iter_m), "clSetKernelArg2");
     checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), &n), "clSetKernelArg3");
     checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &k), "clSetKernelArg4");
-    checkErr(clSetKernelArg(kernel, 5, sizeof(cl_float), &alpha), "clSetKernelArg5");
+    checkErr(clSetKernelArg(kernel, 5, sizeof(number), &alpha), "clSetKernelArg5");
     checkErr(clSetKernelArg(kernel, 6, sizeof(cl_mem), &memA), "clSetKernelArg6");
     checkErr(clSetKernelArg(kernel, 7, sizeof(cl_mem), &memB), "clSetKernelArg8");
-    checkErr(clSetKernelArg(kernel, 8, sizeof(cl_float), &beta), "clSetKernelArg10");
+    checkErr(clSetKernelArg(kernel, 8, sizeof(number), &beta), "clSetKernelArg10");
     checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memC[i]), "clSetKernelArg11");
 
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
@@ -170,11 +169,11 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
     iter_m = i == num_devices-1 ? last_dev_m : dev_m;
     clFinish(command_queues[i]);
     if(n == ldc) {
-      errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(cl_float), &c[i*dev_m*ldc], 0, NULL, NULL);
+      errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(number), &c[i*dev_m*ldc], 0, NULL, NULL);
     }
     else {
       for(l=0; l<iter_m; l++) {
-        errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, l*n*sizeof(cl_float), n*sizeof(cl_float), &c[(l+i*dev_m)*ldc], 0, NULL, NULL);
+        errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, l*n*sizeof(number), n*sizeof(number), &c[(l+i*dev_m)*ldc], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueReadBuffer");
@@ -191,14 +190,15 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, cl_
 }
 
 // C = alpha * A * B + beta * C
-// Single precission/float
-void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
-                cl_float alpha, cl_float *a, cl_int lda, cl_float *b, cl_int ldb,
-                cl_float beta, cl_float *c, cl_int ldc, unsigned int flags) {
+template <typename number>
+void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
+                number alpha, number *a, cl_int lda, number *b, cl_int ldb,
+                number beta, number *c, cl_int ldc, unsigned int flags) {
 
   int root_argument, mpi_size, spawns_m, nota, notb;
+  char operation[11];
   MPI_Comm intercomm, parent;
-  MPI_Datatype transtype_a, transtype_b, transtype_c;
+  MPI_Datatype transtype_a, transtype_b, transtype_c, mpi_number;
 
   nota = transa == 'N' || transa == 'n';
   notb = transb == 'N' || transb == 'n';
@@ -208,6 +208,7 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
       printf("MPI_UNIVERSE_SIZE is not set\n");
       return;
     }
+    mpi_number = sizeof(number) == sizeof(cl_float) ? MPI_FLOAT : MPI_DOUBLE;
     mpi_size = atoi(universe_size);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
@@ -219,27 +220,27 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
 
       // We need to resize the types so MPI can know the real size of the elements.
       if(nota) {
-        MPI_Type_vector(spawns_m, k, lda, MPI_FLOAT, &transtype_a);
-        MPI_Type_create_resized(transtype_a, 0, spawns_m*lda*sizeof(float), &transtype_a);
+        MPI_Type_vector(spawns_m, k, lda, mpi_number, &transtype_a);
+        MPI_Type_create_resized(transtype_a, 0, spawns_m*lda*sizeof(number), &transtype_a);
       }
       else {
-        MPI_Type_vector(k, spawns_m, lda, MPI_FLOAT, &transtype_a);
-        MPI_Type_create_resized(transtype_a, 0, spawns_m*sizeof(float), &transtype_a);
+        MPI_Type_vector(k, spawns_m, lda, mpi_number, &transtype_a);
+        MPI_Type_create_resized(transtype_a, 0, spawns_m*sizeof(number), &transtype_a);
       }
       MPI_Type_commit(&transtype_a);
 
       if(notb) {
-        MPI_Type_vector(k, n, ldb, MPI_FLOAT, &transtype_b);
-        MPI_Type_create_resized(transtype_b, 0, k*ldb*sizeof(float), &transtype_b);
+        MPI_Type_vector(k, n, ldb, mpi_number, &transtype_b);
+        MPI_Type_create_resized(transtype_b, 0, k*ldb*sizeof(number), &transtype_b);
       }
       else {
-        MPI_Type_vector(n, k, ldb, MPI_FLOAT, &transtype_b);
-        MPI_Type_create_resized(transtype_b, 0, k*sizeof(float), &transtype_b);
+        MPI_Type_vector(n, k, ldb, mpi_number, &transtype_b);
+        MPI_Type_create_resized(transtype_b, 0, k*sizeof(number), &transtype_b);
       }
       MPI_Type_commit(&transtype_b);
 
-      MPI_Type_vector(spawns_m, n, ldc, MPI_FLOAT, &transtype_c);
-      MPI_Type_create_resized(transtype_c, 0, spawns_m*ldc*sizeof(float), &transtype_c);
+      MPI_Type_vector(spawns_m, n, ldc, mpi_number, &transtype_c);
+      MPI_Type_create_resized(transtype_c, 0, spawns_m*ldc*sizeof(number), &transtype_c);
       MPI_Type_commit(&transtype_c);
 
       m = m - spawns_m*(mpi_size-1);
@@ -251,12 +252,12 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
   }
 
   if(flags & USE_MPI) {
-    // Broadcast matrices dimensions
+    // Broadcast needed parameters
     MPI_Bcast(&spawns_m, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&n, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&k, 1, MPI_INTEGER, root_argument, intercomm);
-    MPI_Bcast(&alpha, 1, MPI_FLOAT, root_argument, intercomm);
-    MPI_Bcast(&beta, 1, MPI_FLOAT, root_argument, intercomm);
+    MPI_Bcast(&alpha, 1, mpi_number, root_argument, intercomm);
+    MPI_Bcast(&beta, 1, mpi_number, root_argument, intercomm);
     MPI_Bcast(&flags, 1, MPI_UNSIGNED, root_argument, intercomm);
     MPI_Bcast(&nota, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&notb, 1, MPI_INTEGER, root_argument, intercomm);
@@ -267,18 +268,18 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
       lda = nota ? k : m;
       ldb = notb ? n : k;
       ldc = n;
-      a = (cl_float *) malloc(m*k*sizeof(cl_float));
-      b = (cl_float *) malloc(k*n*sizeof(cl_float));
-      c = (cl_float *) malloc(m*n*sizeof(cl_float));
+      a = (number *) malloc(m*k*sizeof(number));
+      b = (number *) malloc(k*n*sizeof(number));
+      c = (number *) malloc(m*n*sizeof(number));
     }
 
     if(nota) {
       // Send & Recv A, each node needs spawns_m rows of A
-      MPI_Scatter(&a[m*lda], 1, transtype_a, a, m*k, MPI_FLOAT, root_argument, intercomm);
+      MPI_Scatter(&a[m*lda], 1, transtype_a, a, m*k, mpi_number, root_argument, intercomm);
     }
     else {
       // Send & Recv A, each node needs spawns_m columns of A
-      MPI_Scatter(&a[m], 1, transtype_a, a, spawns_m*k, MPI_FLOAT, root_argument, intercomm);
+      MPI_Scatter(&a[m], 1, transtype_a, a, spawns_m*k, mpi_number, root_argument, intercomm);
     }
 
     // Send B in full to each node
@@ -288,20 +289,21 @@ void blas_sgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
     }
     else {
       // But we can receive a k*n array of floats
-      MPI_Bcast(b, k*n, MPI_FLOAT, root_argument, intercomm);
+      MPI_Bcast(b, k*n, mpi_number, root_argument, intercomm);
     }
 
     if(beta) {
       // We also need to send C if beta != 0
-      MPI_Scatter(&c[m*ldc], 1, transtype_c, c, m*n, MPI_FLOAT, root_argument, intercomm);
+      MPI_Scatter(&c[m*ldc], 1, transtype_c, c, m*n, mpi_number, root_argument, intercomm);
     }
   }
   
-  opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, "blas_sgemm");
+  strcpy(operation, sizeof(number) == sizeof(cl_float) ? "blas_sgemm" : "blas_dgemm");
+  opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
 
   if(flags & USE_MPI) {
     // Recv & Send C
-    MPI_Gather(c, m*n, MPI_FLOAT, &c[m*ldc], 1, transtype_c, root_argument, intercomm);
+    MPI_Gather(c, m*n, mpi_number, &c[m*ldc], 1, transtype_c, root_argument, intercomm);
     if(parent != MPI_COMM_NULL) {
       free(a);
       free(b);
