@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define PRINT_MATRICES 1
+//#define PRINT_MATRICES 1
 
 #ifdef PRINT_MATRICES
   #define PM if(1)
@@ -85,7 +85,8 @@ int main(int argc, char* argv[]) {
 
   alpha = 1;
   beta = 1.5;
-  blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
+  //blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
+  blas_strmm('L', 'U', 'N', 'U', m, m, alpha, a, lda, b, ldb, flags);
 
   // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
