@@ -19,6 +19,13 @@ int main(int argc, char* argv[]) {
   else if (function == DGEMM) {
     blas_dgemm('0', '0', 0, 0, 0, 0, NULL, 0, NULL, 0, 0, NULL, 0, flags);
   }
+  else if(function == STRMM) {
+    blas_strmm('0', '0', '0', '0', 0, 0, 0, NULL, 0, NULL, 0, flags);
+  }
+  else if(function == DTRMM) {
+    blas_dtrmm('0', '0', '0', '0', 0, 0, 0, NULL, 0, NULL, 0, flags);
+  }
+
 
   MPI_Finalize();
 }

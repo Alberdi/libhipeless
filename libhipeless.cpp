@@ -7,6 +7,9 @@
 
 #include <mpi.h>
 
+#define XTRMM_TAG_DIM  3122
+#define XTRMM_TAG_DATA 3123
+
 inline void checkErr(cl_int errcode, const char* name) {
   if(errcode != CL_SUCCESS) {
     std::cerr << "ERROR: " << name << " (" << errcode << ")" << std::endl;
@@ -325,7 +328,7 @@ template <typename number>
 void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int m,
                 cl_int n, number alpha, number *a, cl_int lda, number *b, cl_int ldb,
                 unsigned int flags) {
-  int root_argument, mpi_size, spawns_m, left, upper, unit, nota, dim, i, elems;
+  int root_argument, mpi_size, spawns_m, left, upper, unit, nota, dim, i, j, elems, row;
   int *rows;
   char operation[OPERATION_SIZE];
   int function;
@@ -351,10 +354,10 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
       char* mpi_helper = (char *) "mpihelper";
-/*      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
+      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
       root_argument = MPI_ROOT;
-      MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);*/
+      MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
 
       rows = (int *) malloc(mpi_size*sizeof(int));
       dim = left ? m : n;
@@ -373,10 +376,10 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     }
   }
 
-  /*
+
   if(flags & USE_MPI) {
-    // Broadcast needed parameters
-    MPI_Bcast(&m, 1, MPI_INTEGER, root_argument, intercomm);
+    // Broadcast common parameters
+    //MPI_Bcast(&m, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&n, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&alpha, 1, mpi_number, root_argument, intercomm);
     MPI_Bcast(&flags, 1, MPI_UNSIGNED, root_argument, intercomm);
@@ -385,30 +388,43 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     MPI_Bcast(&unit, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&nota, 1, MPI_INTEGER, root_argument, intercomm);
 
-    if(parent != MPI_COMM_NULL) {
-      flags |= NON_MPI_ROOT;
-      lda = left ? m : n;
-      ldb = m;
-      a = (number *) malloc(m*m*sizeof(number));
-      b = (number *) malloc(m*n*sizeof(number));
-    }
-
-    if(nota) {
-      // Send & Recv A, each node needs spawns_m rows of A
-      MPI_Scatter(&a[m*lda], 1, transtype_a, a, m*m, mpi_number, root_argument, intercomm);
+    if(parent == MPI_COMM_NULL) {
+      if(nota) {
+        row = 0;
+        // Send & Recv A, each node i needs rows[i] rows of A
+        for(i = 0; i < mpi_size-1; i++) {
+          row += rows[i];
+          dim = m-row;
+          MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
+          MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
+          for(j = 0; j < rows[i+1]; j++) {
+            MPI_Send(&a[(row+j)*lda + row + j], dim-j, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+          }
+        }
+      }
     }
     else {
-      // Send & Recv A, each node needs spawns_m columns of A
-      MPI_Scatter(&a[m], 1, transtype_a, a, spawns_m*m, mpi_number, root_argument, intercomm);
+      flags |= NON_MPI_ROOT;
+      MPI_Recv(&m, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
+      MPI_Recv(&dim, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
+      lda = dim;
+      ldb = m;
+      a = (number *) malloc(m*dim*sizeof(number));
+      b = (number *) malloc(m*n*sizeof(number));
+      if(nota) {
+        for(j = 0; j < m; j++) {
+          MPI_Recv(&a[j*dim + j], dim-j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+        }
+      }
     }
-
     // Send B in full to each node
-    MPI_Bcast(b, m*n, mpi_number, root_argument, intercomm);
+    ////MPI_Bcast(b, m*n, mpi_number, root_argument, intercomm);
 
   }
   
   //opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
 
+  /*
   if(flags & USE_MPI) {
     // Recv & Send C
     MPI_Gather(c, m*n, mpi_number, &c[m*ldc], 1, transtype_c, root_argument, intercomm);

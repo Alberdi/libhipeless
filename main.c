@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
   }
 
-  int max_size = 64;
+  int max_size = 14;
   srand((unsigned)time(NULL));
   m = (int)(rand()%max_size)+16;
   k = (int)(rand()%max_size)+16;
@@ -55,6 +55,9 @@ int main(int argc, char* argv[]) {
   ldb = colsb+(rand()%max_size)+1;
   ldc = n+(rand()%max_size)+1;
 
+  rowsa = m;
+  colsa = m;
+  lda = m + 3;
   a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
   b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
   c = (cl_float *) malloc(m*ldc*sizeof(cl_float));
@@ -62,7 +65,8 @@ int main(int argc, char* argv[]) {
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
     for(j=0; j<colsa; j++) {
-      a[i*lda+j] = (float)(rand() % 256);
+      //a[i*lda+j] = (float)(rand() % 256);
+      a[i*lda+j] = j;
       PM printf("%.0f ", a[i*lda+j]);
     }
     PM printf("\n");
@@ -88,7 +92,7 @@ int main(int argc, char* argv[]) {
   //blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
   blas_strmm('L', 'U', 'N', 'U', m, m, alpha, a, lda, b, ldb, flags);
 
-  // Result printing
+/*  // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
   for(i=0; i<m; i++) {
     for(j=0; j<n; j++) {
@@ -96,7 +100,7 @@ int main(int argc, char* argv[]) {
     }
     PM printf("\n");
   }
-
+*/
   if(flags & USE_MPI) {
     MPI_Finalize();
   }
