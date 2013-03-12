@@ -1,6 +1,6 @@
 FLAGS = -O3 -L /opt/AMDAPP/lib/x86_64/ -l OpenCL -I /opt/AMDAPP/include/
 
-all: main mpihelper test
+all: main mpihelper
 
 main: main.c libhipeless.h
 	mpic++ -o main main.c libhipeless.h $(FLAGS)
