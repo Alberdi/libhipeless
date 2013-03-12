@@ -12,5 +12,5 @@ test: test.cpp
 	g++ -o test test.cpp $(FLAGS)
 
 clean:
-	rm *.o main mpihelper test
+	rm main mpihelper test
 
