@@ -329,6 +329,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
                 cl_int n, number alpha, number *a, cl_int lda, number *b, cl_int ldb,
                 unsigned int flags) {
   int root_argument, mpi_size, spawns_m, left, upper, unit, nota, dim, i, j, elems, row;
+  int start, end, delta;
   int *rows;
   char operation[OPERATION_SIZE];
   int function;
@@ -362,13 +363,16 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       rows = (int *) malloc(mpi_size*sizeof(int));
       dim = left ? m : n;
       elems = (dim*dim+dim)/mpi_size;
-      for(i = 0; i < mpi_size-1; i++) {
+      start = upper ? 0 : mpi_size-1;
+      end = upper ? mpi_size-1 : 0;
+      delta = upper ? 1 : -1;
+      for(i = start; i != end; i += delta) {
         // Calculate the consecutive rows to be processed by each processor.
         // The equation is derived and explained in the documentation.
         rows[i] = round((2*dim+1 - sqrt((2*dim+1)*(2*dim+1)-4*(elems)))/2);
         dim -= rows[i];
       }
-      rows[mpi_size-1] = dim;
+      rows[i] = dim;
     }
     else {
       intercomm = parent;
@@ -394,11 +398,16 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         // Send & Recv A, each node i needs rows[i] rows of A
         for(i = 0; i < mpi_size-1; i++) {
           row += rows[i];
-          dim = m-row;
+          dim = upper ? m-row : row+rows[i];
           MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
           MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
           for(j = 0; j < rows[i+1]; j++) {
-            MPI_Send(&a[(row+j)*lda + row + j], dim-j, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+            if(upper) {
+              MPI_Send(&a[(row+j)*lda + row + j], dim-j, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+            }
+            else {
+              MPI_Send(&a[(row+j)*lda], row+rows[i+1], mpi_number, i, XTRMM_TAG_DATA, intercomm);
+            }
           }
         }
       }
@@ -413,7 +422,12 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       b = (number *) malloc(m*n*sizeof(number));
       if(nota) {
         for(j = 0; j < m; j++) {
-          MPI_Recv(&a[j*dim + j], dim-j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+          if(upper) {
+            MPI_Recv(&a[j*dim + j], dim-j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+          }
+          else {
+            MPI_Recv(&a[j*dim], dim-m-1+j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+          }
         }
       }
     }
