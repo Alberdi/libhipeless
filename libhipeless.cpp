@@ -383,7 +383,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
 
   if(flags & USE_MPI) {
     // Broadcast common parameters
-    //MPI_Bcast(&m, 1, MPI_INTEGER, root_argument, intercomm);
+    MPI_Bcast(&m, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&n, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&alpha, 1, mpi_number, root_argument, intercomm);
     MPI_Bcast(&flags, 1, MPI_UNSIGNED, root_argument, intercomm);
@@ -393,15 +393,16 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     MPI_Bcast(&nota, 1, MPI_INTEGER, root_argument, intercomm);
 
     if(parent == MPI_COMM_NULL) {
-      if(nota) {
-        row = 0;
-        // Send & Recv A, each node i needs rows[i] rows of A
-        for(i = 0; i < mpi_size-1; i++) {
-          row += rows[i];
-          dim = upper ? m-row : row+rows[i];
-          MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
-          MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
-          for(j = 0; j < rows[i+1]; j++) {
+      row = 0;
+      // Send & Recv A, each node i needs rows[i] rows of A
+      for(i = 0; i < mpi_size-1; i++) {
+        row += rows[i];
+        dim = upper ? m-row : row+rows[i];
+        MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
+        MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
+        for(j = 0; j < rows[i+1]; j++) {
+          // We transmit the whole diagonal even though it might not be used
+          if(nota) {
             if(upper) {
               MPI_Send(&a[(row+j)*lda + row + j], dim-j, mpi_number, i, XTRMM_TAG_DATA, intercomm);
             }
@@ -414,25 +415,27 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     }
     else {
       flags |= NON_MPI_ROOT;
-      MPI_Recv(&m, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
+      MPI_Recv(&row, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       MPI_Recv(&dim, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       lda = dim;
       ldb = m;
-      a = (number *) malloc(m*dim*sizeof(number));
+      a = (number *) malloc(row*dim*sizeof(number));
       b = (number *) malloc(m*n*sizeof(number));
-      if(nota) {
-        for(j = 0; j < m; j++) {
+      for(j = 0; j < row; j++) {
+        if(nota) {
           if(upper) {
             MPI_Recv(&a[j*dim + j], dim-j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
           }
           else {
-            MPI_Recv(&a[j*dim], dim-m-1+j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+            MPI_Recv(&a[j*dim], dim-row-1+j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
           }
         }
       }
     }
+
     // Send B in full to each node
-    ////MPI_Bcast(b, m*n, mpi_number, root_argument, intercomm);
+    // (even though we don't need it in tis fullness)
+    MPI_Bcast(b, m*n, mpi_number, root_argument, intercomm);
 
   }
   
