@@ -334,7 +334,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
   char operation[OPERATION_SIZE];
   int function;
   MPI_Comm intercomm, parent;
-  MPI_Datatype transtype_a, transtype_b, transtype_c, mpi_number;
+  MPI_Datatype mpi_number;
 
   function = sizeof(number) == sizeof(cl_float) ? STRMM : DTRMM;
   strcpy(operation, function == STRMM ? "blas_strmm" : "blas_dtrmm");
@@ -448,18 +448,27 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
   
   //opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
 
-  /*
   if(flags & USE_MPI) {
-    // Recv & Send C
-    MPI_Gather(c, m*n, mpi_number, &c[m*ldc], 1, transtype_c, root_argument, intercomm);
     if(parent == MPI_COMM_NULL) {
-      MPI_Type_free(&transtype_a);
+      row = 0;
+      // Recv B
+      // We recover the chunks in order because otherwise we wouldn't know where to place them
+      for(i = 0; i < mpi_size-1; i++) {
+        row += rows[i];
+        dim = upper ? m-row : row+rows[i];
+        for(j = 0; j < dim; j++) {
+          MPI_Recv(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+        }
+      }
     }
     else {
+      // Send B
+      for(j = 0; j < dim; j++) {
+        MPI_Send(&b[j*ldb], n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
+      }
       free(a);
       free(b);
     }
   }
-  */
 }
 
