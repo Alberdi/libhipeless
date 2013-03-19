@@ -325,6 +325,17 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
 
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
 template <typename number>
+void dummy_xtrmm(cl_int m, cl_int n, number *a, number *b, cl_int ldb, cl_int rank) {
+  int i, j;
+  for(i = 0; i < m; i++) {
+    for(j = 0; j < n; j++) {
+      b[i*ldb + j] = i;
+    }
+  }
+}
+
+// B = alpha*op(A)*B, or B = alpha*B*op(A)
+template <typename number>
 void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int m,
                 cl_int n, number alpha, number *a, cl_int lda, number *b, cl_int ldb,
                 unsigned int flags) {
@@ -379,7 +390,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       root_argument = 0;
     }
   }
-
 
   if(flags & USE_MPI) {
     // Broadcast common parameters
@@ -446,6 +456,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     }
   }
   
+  dummy_xtrmm(m, n, a, b, ldb, root_argument);
   //opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
 
   if(flags & USE_MPI) {
