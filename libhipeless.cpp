@@ -334,6 +334,158 @@ void dummy_xtrmm(cl_int m, cl_int n, number *a, number *b, cl_int ldb, cl_int ra
   }
 }
 
+template <typename number>
+void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int row, cl_int dim, cl_int m,
+                  cl_int n, number alpha, number *a, cl_int lda, number *b, cl_int ldb, unsigned int flags,
+                  const char* kernelfunction) {
+  int i, l;
+  cl_uint num_devices;
+  cl_int errcode;
+  cl_context context;
+  cl_device_id *devices;
+  cl_command_queue *command_queues;
+  cl_mem memA, memB;
+  cl_mem *memC;
+  cl_program program;
+  cl_kernel kernel;
+
+  int dev_row, last_dev_row, iter_row;
+
+  const char *source;
+  size_t size_devices;
+  size_t global_work_size[2];
+  size_t local_work_size[2];
+
+  //global_work_size[0] = rowsA + (rowsA % BLOCK_SIZE ? BLOCK_SIZE - (rowsA % BLOCK_SIZE) : 0);
+  global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
+  local_work_size[0] = BLOCK_SIZE;
+  local_work_size[1] = BLOCK_SIZE;
+
+  cl_uint size_platforms;
+  errcode = clGetPlatformIDs(0, NULL, &size_platforms);
+  cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
+  errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
+  checkErr(errcode, "clGetPlatformIDs");
+  // TODO Following line is not applicable to all the possible setups
+  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
+
+  context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
+  checkErr(errcode, "clCreateContextFromType");
+
+  errcode = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &num_devices, NULL);
+  checkErr(errcode, "clGetContextInfo1");
+  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &size_devices);
+  checkErr(errcode, "clGetContextInfo2");
+  devices = (cl_device_id *) malloc(size_devices);
+  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, size_devices, devices, NULL);
+  checkErr(errcode, "clGetContextInfo3");
+
+  dev_row = row/num_devices;
+  last_dev_row = row - dev_row*(num_devices-1);
+
+  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_row*dim*sizeof(number), NULL, &errcode);
+  checkErr(errcode, "clCreateBufferA");
+
+  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, m*n*sizeof(number), NULL, &errcode);
+  checkErr(errcode, "clCreateBufferB");
+
+  source = readKernelFromSource("operations.cl");
+  size_t size_source[] = { strlen(source) };
+  program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
+  checkErr(errcode, "clCreateProgramWithSource");
+
+  errcode = clBuildProgram(program, size_devices/sizeof(cl_device_id), devices, NULL, NULL, NULL);
+  checkErr(errcode, "clBuildProgram");
+
+  kernel = clCreateKernel(program, kernelfunction, &errcode);
+  checkErr(errcode, "clCreateKernel");
+   
+  command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
+  memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
+  for(i=0; i < num_devices; i++) {
+    iter_row = i == num_devices-1 ? last_dev_row : dev_row;
+    global_work_size[0] = iter_row + (iter_row % BLOCK_SIZE ? BLOCK_SIZE - (iter_row % BLOCK_SIZE) : 0);
+
+    command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
+    checkErr(errcode, "clCreateCommandQueue");
+
+    if(nota) {
+      // Load full consecutive rows of a
+      if(dim == lda) {
+        // In this case, we can write it all in one call
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_row*dim*sizeof(number), &a[i*dev_row*dim], 0, NULL, NULL);
+      }
+      else {
+        for(l=0; l<iter_row; l++) {
+          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*dim*sizeof(number), dim*sizeof(number), &a[(i*dev_row+l)*lda], 0, NULL, NULL);
+        }
+      }
+    }
+    else {
+      // Load full consecutive columns of a
+      for(l=0; l<dim; l++) {
+        //errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(number), iter_m*sizeof(number), &a[l*lda+i*dev_m], 0, NULL, NULL);
+      }
+    }
+    checkErr(errcode, "clEnqueueWriteBufferA");
+
+    // Load full consecutive rows of b
+    if(n == lda) {
+      // In this case, we can write it all in one call
+      errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, m*n*sizeof(number), b, 0, NULL, NULL);
+    }
+    else {
+      for(l=0; l<m; l++) {
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[l*ldb], 0, NULL, NULL);
+      }
+    }
+    checkErr(errcode, "clEnqueueWriteBufferB");
+
+    // Temporal C memory is needed to not overwrite directly the B matrix
+    memC[i] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, iter_row*n*sizeof(number), NULL, &errcode);
+    checkErr(errcode, "clCreateBufferC");
+
+    checkErr(clSetKernelArg(kernel, 0, sizeof(cl_int), &left), "clSetKernelArg0");
+    checkErr(clSetKernelArg(kernel, 1, sizeof(cl_int), &upper), "clSetKernelArg1");
+    checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &nota), "clSetKernelArg2");
+    checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), &unit), "clSetKernelArg3");
+    checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &row), "clSetKernelArg4");
+    checkErr(clSetKernelArg(kernel, 5, sizeof(cl_int), &m), "clSetKernelArg5");
+    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_int), &n), "clSetKernelArg6");
+    checkErr(clSetKernelArg(kernel, 7, sizeof(number), &alpha), "clSetKernelArg7");
+    checkErr(clSetKernelArg(kernel, 8, sizeof(cl_mem), &memA), "clSetKernelArg8");
+    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memB), "clSetKernelArg9");
+    checkErr(clSetKernelArg(kernel, 10, sizeof(cl_mem), &memC[i]), "clSetKernelArg10");
+
+    errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
+    checkErr(errcode, "clEnqueueNDRangeKernel");
+  }
+
+  for(i=0; i < num_devices; i++) {
+    iter_row = i == num_devices-1 ? last_dev_row : dev_row;
+    clFinish(command_queues[i]);
+    // Store the calculated values of C in B
+    if(n == ldb) {
+      errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_row*n*sizeof(number), &b[i*dev_row*ldb], 0, NULL, NULL);
+    }
+    else {
+      for(l=0; l<iter_row; l++) {
+        errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[(l+i*dev_row)*ldb], 0, NULL, NULL);
+      }
+    }
+    checkErr(errcode, "clEnqueueReadBuffer");
+  }
+
+  for(i=0; i < num_devices; i++) {
+    clFinish(command_queues[i]);
+    clReleaseCommandQueue(command_queues[i]);
+  }
+
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  clReleaseContext(context);
+}
+
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
 template <typename number>
 void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int m,
@@ -354,6 +506,9 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
   upper = uplo == 'U' || uplo == 'u';
   unit = diag == 'U' || diag == 'u';
   nota = transa == 'N' || transa == 'n';
+
+  dim = left ? m : n;
+  row = dim;
 
   if(flags & USE_MPI) {
     char* universe_size = getenv("MPI_UNIVERSE_SIZE");
@@ -384,6 +539,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         dim -= rows[i];
       }
       rows[i] = dim;
+      row = rows[0];
     }
     else {
       intercomm = parent;
@@ -456,7 +612,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     }
   }
   
-  dummy_xtrmm(m, n, a, b, ldb, root_argument);
+  opencl_xtrmm(left, upper, nota, unit, row, dim, m, n, alpha, a, lda, b, ldb, flags, operation);
   //opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
 
   if(flags & USE_MPI) {
