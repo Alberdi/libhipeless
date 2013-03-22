@@ -17,11 +17,11 @@ inline void checkErr(cl_int errcode, const char* name) {
   }
 }
 
-const char* readKernelFromSource(const char* source) {
+std::string readKernelFromSource(const char* source) {
     std::ifstream file(source);
     checkErr(file.is_open() ? CL_SUCCESS : -1, "ifstream()");
-    std::string sourceString( std::istreambuf_iterator<char>(file), (std::istreambuf_iterator<char>()));
-    return sourceString.c_str();
+    std::string sourceString(std::istreambuf_iterator<char>(file), (std::istreambuf_iterator<char>()));
+    return sourceString;
 }
 
 template <typename number>
@@ -78,7 +78,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, k*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
 
-  source = readKernelFromSource("operations.cl");
+  source = readKernelFromSource("operations.cl").c_str();
   size_t size_source[] = { strlen(source) };
   program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
   checkErr(errcode, "clCreateProgramWithSource");
@@ -389,7 +389,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, m*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
 
-  source = readKernelFromSource("operations.cl");
+  source = readKernelFromSource("operations.cl").c_str();
   size_t size_source[] = { strlen(source) };
   program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
   checkErr(errcode, "clCreateProgramWithSource");
@@ -450,12 +450,13 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &nota), "clSetKernelArg2");
     checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), &unit), "clSetKernelArg3");
     checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &row), "clSetKernelArg4");
-    checkErr(clSetKernelArg(kernel, 5, sizeof(cl_int), &m), "clSetKernelArg5");
-    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_int), &n), "clSetKernelArg6");
-    checkErr(clSetKernelArg(kernel, 7, sizeof(number), &alpha), "clSetKernelArg7");
-    checkErr(clSetKernelArg(kernel, 8, sizeof(cl_mem), &memA), "clSetKernelArg8");
-    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memB), "clSetKernelArg9");
-    checkErr(clSetKernelArg(kernel, 10, sizeof(cl_mem), &memC[i]), "clSetKernelArg10");
+    checkErr(clSetKernelArg(kernel, 5, sizeof(cl_int), &dim), "clSetKernelArg5");
+    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_int), &m), "clSetKernelArg6");
+    checkErr(clSetKernelArg(kernel, 7, sizeof(cl_int), &n), "clSetKernelArg7");
+    checkErr(clSetKernelArg(kernel, 8, sizeof(number), &alpha), "clSetKernelArg8");
+    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memA), "clSetKernelArg9");
+    checkErr(clSetKernelArg(kernel, 10, sizeof(cl_mem), &memB), "clSetKernelArg10");
+    checkErr(clSetKernelArg(kernel, 11, sizeof(cl_mem), &memC[i]), "clSetKernelArg11");
 
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");

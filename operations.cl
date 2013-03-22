@@ -137,11 +137,34 @@ __kernel void blas_dgemm(int nota, int notb, int m, int n, int k, double alpha, 
   }
 }
 
-__kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int m, int n,
+__kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int dim, int m, int n,
                          float alpha, __global const float *a, __global const float *b, __global float *c) {
+
+  float Csub = 0;
+
+  // Block index
+  int bx = get_group_id(0);
+  int by = get_group_id(1);
+
+  // Thread index
+  int tx = get_local_id(0);
+  int ty = get_local_id(1);
+
+  // Index of the first sub-matrix of a processed by the block
+  int indexa = BLOCK_SIZE * bx;
+ 
+  // Index of the first sub-matrix of b processed by the block
+  int indexb = BLOCK_SIZE * by;
+
+  if(tx+indexa < m && ty+indexb < n && tx+indexa < row) { // In bounds
+    for(int i=0; i<dim; i++) {
+      Csub += a[(tx+indexa)*dim+i] * b[i*n+ty+indexb];
+    }
+    c[(tx+indexa)*n+(ty+indexb)] = Csub;
+  }
 }
 
-__kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int m, int n,
+__kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int dim, int m, int n,
                          double alpha, __global const double *a, __global const double *b, __global double *c) {
 }
 
