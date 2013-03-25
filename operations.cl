@@ -157,7 +157,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
   int indexb = BLOCK_SIZE * by;
 
   if(tx+indexa < m && ty+indexb < n && tx+indexa < row) { // In bounds
-    for(int i=0; i<dim; i++) {
+    for(int i=tx+indexa; i<dim; i++) {
       Csub += a[(tx+indexa)*dim+i] * b[i*n+ty+indexb];
     }
     c[(tx+indexa)*n+(ty+indexb)] = Csub;
