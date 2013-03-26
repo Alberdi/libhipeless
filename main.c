@@ -14,7 +14,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_CPU;
+  unsigned int flags = USE_CPU | USE_MPI;
   cl_int i, j, m, k, n;
   cl_int lda, ldb, ldc;
   cl_float *a, *b, *c;

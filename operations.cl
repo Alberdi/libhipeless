@@ -172,7 +172,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
       else
         As[tx][ty] = a[x*dim+i+ty];
     }
-    if(i+tx >= m || y >= n)
+    if(i+tx >= dim || y >= n)
       Bs[tx][ty] = 0;
     else
       Bs[tx][ty] = b[(i+tx)*n+y];
@@ -181,7 +181,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
     for(int l=0; l<BLOCK_SIZE; l++)
       Csub += As[tx][l] * Bs[l][ty];
   }
-  if(x < m && y < n) { // In bounds
+  if(x < dim && y < n) { // In bounds
     c[x*n+y] = alpha*Csub;
   }
 }

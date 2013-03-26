@@ -435,7 +435,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
       errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, m*n*sizeof(number), b, 0, NULL, NULL);
     }
     else {
-      for(l=0; l<m; l++) {
+      for(l=0; l<dim; l++) {
         errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[l*ldb], 0, NULL, NULL);
       }
     }
@@ -540,7 +540,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         dim -= rows[i];
       }
       rows[i] = dim;
-      row = rows[0];
     }
     else {
       intercomm = parent;
@@ -585,6 +584,8 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
           MPI_Send(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
         }
       }
+      dim = m;
+      row = rows[0];
     }
     else {
       flags |= NON_MPI_ROOT;
