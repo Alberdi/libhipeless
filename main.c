@@ -55,13 +55,13 @@ int main(int argc, char* argv[]) {
   ldb = colsb+(rand()%max_size)+1;
   ldc = n+(rand()%max_size)+1;
 
-  rowsa = 24;
-  colsa = 24;
-  lda = 24;
+  rowsa = 64;
+  colsa = 64;
+  lda = 64;
 
-  rowsb = 24;
-  colsb = 24;
-  ldb = 24;
+  rowsb = 64;
+  colsb = 64;
+  ldb = 64;
 
   a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
   b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));

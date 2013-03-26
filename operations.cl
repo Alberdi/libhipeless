@@ -142,25 +142,47 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
 
   float Csub = 0;
 
-  // Block index
-  int bx = get_group_id(0);
-  int by = get_group_id(1);
-
   // Thread index
   int tx = get_local_id(0);
   int ty = get_local_id(1);
 
-  // Index of the first sub-matrix of a processed by the block
-  int indexa = BLOCK_SIZE * bx;
+  // Target index
+  int x = tx + BLOCK_SIZE * get_group_id(0);
+  int y = ty + BLOCK_SIZE * get_group_id(1);
  
-  // Index of the first sub-matrix of b processed by the block
-  int indexb = BLOCK_SIZE * by;
+  // Declaration of the local memory array As 
+  // used to store the sub-matrix of a
+  __local float As[BLOCK_SIZE][BLOCK_SIZE];
+                           
+  // Declaration of the local memory array Bs 
+  // used to store the sub-matrix of b
+  __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
 
-  if(tx+indexa < m && ty+indexb < n && tx+indexa < row) { // In bounds
-    for(int i=tx+indexa; i<dim; i++) {
-      Csub += a[(tx+indexa)*dim+i] * b[i*n+ty+indexb];
+  for(int i=0; i<dim; i+=BLOCK_SIZE) {
+    // Load the matrices from global memory to local memory;
+    // each thread loads one element of each matrix
+    // Barriers are used for synchronization and to be sure we don't
+    // overwrite an address that is going to be used
+    barrier(CLK_LOCAL_MEM_FENCE);
+    if(x >= row || i+ty >= dim || i+ty < x)
+      As[tx][ty] = 0;
+    else {
+      if(unit && x == i+ty)
+        As[tx][ty] = 1;
+      else
+        As[tx][ty] = a[x*dim+i+ty];
     }
-    c[(tx+indexa)*n+(ty+indexb)] = Csub;
+    if(i+tx >= m || y >= n)
+      Bs[tx][ty] = 0;
+    else
+      Bs[tx][ty] = b[(i+tx)*n+y];
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for(int l=0; l<BLOCK_SIZE; l++)
+      Csub += As[tx][l] * Bs[l][ty];
+  }
+  if(x < m && y < n) { // In bounds
+    c[x*n+y] = alpha*Csub;
   }
 }
 
