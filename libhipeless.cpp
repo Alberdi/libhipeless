@@ -212,15 +212,15 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
   notb = transb == 'N' || transb == 'n';
 
   if(flags & USE_MPI) {
-    char* universe_size = getenv("MPI_UNIVERSE_SIZE");
-    if(universe_size == NULL) {
-      printf("MPI_UNIVERSE_SIZE is not set\n");
-      return;
-    }
     mpi_number = function == SGEMM ? MPI_FLOAT : MPI_DOUBLE;
-    mpi_size = atoi(universe_size);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
+      char* universe_size = getenv("MPI_UNIVERSE_SIZE");
+      if(universe_size == NULL) {
+        printf("MPI_UNIVERSE_SIZE is not set\n");
+        return;
+      }
+      mpi_size = atoi(universe_size);
       char* mpi_helper = (char *) "mpihelper";
       MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
@@ -510,15 +510,15 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
   row = dim;
 
   if(flags & USE_MPI) {
-    char* universe_size = getenv("MPI_UNIVERSE_SIZE");
-    if(universe_size == NULL) {
-      printf("MPI_UNIVERSE_SIZE is not set\n");
-      return;
-    }
     mpi_number = function == STRMM ? MPI_FLOAT : MPI_DOUBLE;
-    mpi_size = atoi(universe_size);
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
+      char* universe_size = getenv("MPI_UNIVERSE_SIZE");
+      if(universe_size == NULL) {
+        printf("MPI_UNIVERSE_SIZE is not set\n");
+        return;
+      }
+      mpi_size = atoi(universe_size);
       char* mpi_helper = (char *) "mpihelper";
       MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
                     MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
