@@ -45,7 +45,6 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   size_t global_work_size[2];
   size_t local_work_size[2];
 
-  //global_work_size[0] = rowsA + (rowsA % BLOCK_SIZE ? BLOCK_SIZE - (rowsA % BLOCK_SIZE) : 0);
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
   local_work_size[0] = BLOCK_SIZE;
   local_work_size[1] = BLOCK_SIZE;
@@ -356,7 +355,6 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   size_t global_work_size[2];
   size_t local_work_size[2];
 
-  //global_work_size[0] = rowsA + (rowsA % BLOCK_SIZE ? BLOCK_SIZE - (rowsA % BLOCK_SIZE) : 0);
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
   local_work_size[0] = BLOCK_SIZE;
   local_work_size[1] = BLOCK_SIZE;
@@ -539,7 +537,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         rows[i] = round((2*dim+1 - sqrt((2*dim+1)*(2*dim+1)-4*(elems)))/2);
         dim -= rows[i];
       }
-      rows[i] = dim;
+      rows[end] = dim;
     }
     else {
       intercomm = parent;
@@ -549,7 +547,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
 
   if(flags & USE_MPI) {
     // Broadcast common parameters
-    //MPI_Bcast(&m, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&n, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&alpha, 1, mpi_number, root_argument, intercomm);
     MPI_Bcast(&flags, 1, MPI_UNSIGNED, root_argument, intercomm);
@@ -573,7 +570,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
               MPI_Send(&a[(row+j)*lda + row + j], dim-j, mpi_number, i, XTRMM_TAG_DATA, intercomm);
             }
             else {
-              //MPI_Send(&a[(row+j)*lda], row+rows[i+1], mpi_number, i, XTRMM_TAG_DATA, intercomm);
               MPI_Send(&a[(row+j)*lda], dim-rows[i+1]-1+j, mpi_number, i, XTRMM_TAG_DATA, intercomm);
             }
           }
@@ -615,7 +611,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
   }
   
   opencl_xtrmm(left, upper, nota, unit, row, dim, m, n, alpha, a, lda, b, ldb, flags, operation);
-  //opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
 
   if(flags & USE_MPI) {
     if(parent == MPI_COMM_NULL) {
