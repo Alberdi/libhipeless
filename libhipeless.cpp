@@ -24,6 +24,41 @@ std::string readKernelFromSource(const char* source) {
     return sourceString;
 }
 
+void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_devices, cl_device_id **devices, unsigned int flags) {
+  cl_int errcode;
+  cl_uint size_platforms;
+  
+  errcode = clGetPlatformIDs(0, NULL, &size_platforms);
+  cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
+  errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
+  checkErr(errcode, "clGetPlatformIDs");
+
+  // TODO Following line is not applicable to all the possible setups
+  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
+
+  *context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
+  checkErr(errcode, "clCreateContextFromType");
+
+  errcode = clGetContextInfo(*context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), num_devices, NULL);
+  checkErr(errcode, "clGetContextInfo1");
+  errcode = clGetContextInfo(*context, CL_CONTEXT_DEVICES, 0, NULL, size_devices);
+  checkErr(errcode, "clGetContextInfo2");
+  *devices = (cl_device_id *) malloc(*size_devices);
+  errcode = clGetContextInfo(*context, CL_CONTEXT_DEVICES, *size_devices, *devices, NULL);
+  checkErr(errcode, "clGetContextInfo3");
+}
+
+void opencl_finalize(cl_uint num_devices, cl_command_queue *command_queues, cl_kernel kernel, cl_program program, cl_context context) {
+  for(int i=0; i < num_devices; i++) {
+    clFinish(command_queues[i]);
+    clReleaseCommandQueue(command_queues[i]);
+  }
+
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  clReleaseContext(context);
+}
+
 template <typename number>
 int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number alpha, number *a, cl_int lda,
                      number *b, cl_int ldb, number beta, number *c, cl_int ldc, unsigned int flags, const char* kernelfunction) {
@@ -49,25 +84,8 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   local_work_size[0] = BLOCK_SIZE;
   local_work_size[1] = BLOCK_SIZE;
 
-  cl_uint size_platforms;
-  errcode = clGetPlatformIDs(0, NULL, &size_platforms);
-  cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
-  errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
-  checkErr(errcode, "clGetPlatformIDs");
-  // TODO Following line is not applicable to all the possible setups
-  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
-
-  context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
-  checkErr(errcode, "clCreateContextFromType");
-
-  errcode = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &num_devices, NULL);
-  checkErr(errcode, "clGetContextInfo1");
-  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &size_devices);
-  checkErr(errcode, "clGetContextInfo2");
-  devices = (cl_device_id *) malloc(size_devices);
-  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, size_devices, devices, NULL);
-  checkErr(errcode, "clGetContextInfo3");
-
+  opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
+  
   dev_m = m/num_devices;
   last_dev_m = m - dev_m*(num_devices-1);
 
@@ -183,14 +201,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  for(i=0; i < num_devices; i++) {
-    clFinish(command_queues[i]);
-    clReleaseCommandQueue(command_queues[i]);
-  }
-
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
-  clReleaseContext(context);
+  opencl_finalize(num_devices, command_queues, kernel, program, context);
 }
 
 // C = alpha*op(A)*op(B) + beta*C
@@ -359,25 +370,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   local_work_size[0] = BLOCK_SIZE;
   local_work_size[1] = BLOCK_SIZE;
 
-  cl_uint size_platforms;
-  errcode = clGetPlatformIDs(0, NULL, &size_platforms);
-  cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
-  errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
-  checkErr(errcode, "clGetPlatformIDs");
-  // TODO Following line is not applicable to all the possible setups
-  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
-
-  context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
-  checkErr(errcode, "clCreateContextFromType");
-
-  errcode = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &num_devices, NULL);
-  checkErr(errcode, "clGetContextInfo1");
-  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &size_devices);
-  checkErr(errcode, "clGetContextInfo2");
-  devices = (cl_device_id *) malloc(size_devices);
-  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, size_devices, devices, NULL);
-  checkErr(errcode, "clGetContextInfo3");
-
+  opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
+  
   dev_row = row/num_devices;
   last_dev_row = row - dev_row*(num_devices-1);
 
@@ -475,14 +469,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  for(i=0; i < num_devices; i++) {
-    clFinish(command_queues[i]);
-    clReleaseCommandQueue(command_queues[i]);
-  }
-
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
-  clReleaseContext(context);
+  opencl_finalize(num_devices, command_queues, kernel, program, context);
 }
 
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
