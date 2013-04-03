@@ -78,11 +78,9 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   const char *source;
   size_t size_devices;
   size_t global_work_size[2];
-  size_t local_work_size[2];
+  size_t local_work_size[2] = {BLOCK_SIZE, BLOCK_SIZE};
 
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
-  local_work_size[0] = BLOCK_SIZE;
-  local_work_size[1] = BLOCK_SIZE;
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
   
@@ -364,11 +362,9 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   const char *source;
   size_t size_devices;
   size_t global_work_size[2];
-  size_t local_work_size[2];
+  size_t local_work_size[2] = {BLOCK_SIZE, BLOCK_SIZE};
 
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
-  local_work_size[0] = BLOCK_SIZE;
-  local_work_size[1] = BLOCK_SIZE;
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
   
