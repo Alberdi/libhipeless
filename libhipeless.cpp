@@ -113,6 +113,8 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   size_t global_work_size[2];
   size_t local_work_size[2] = {BLOCK_SIZE, BLOCK_SIZE};
 
+  // global_work_size[0] will be determined for each device on the platform,
+  // because the last one might have a bit more of work to do.
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
@@ -379,6 +381,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   size_t global_work_size[2];
   size_t local_work_size[2] = {BLOCK_SIZE, BLOCK_SIZE};
 
+  // global_work_size[0] will be determined for each device on the platform,
+  // because the last one might have a bit more of work to do.
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
