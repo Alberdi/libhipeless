@@ -24,6 +24,18 @@ std::string readKernelFromSource(const char* source) {
     return sourceString;
 }
 
+void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
+  char* universe_size = getenv("MPI_UNIVERSE_SIZE");
+  if(universe_size == NULL) {
+    fprintf(stderr, "MPI_UNIVERSE_SIZE is not set\n");
+    exit(EXIT_FAILURE);
+  }
+  *mpi_size = atoi(universe_size);
+  char* mpi_helper = (char *) "mpihelper";
+  MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, *mpi_size-1, MPI_INFO_NULL, 0,
+                 MPI_COMM_SELF, intercomm, MPI_ERRCODES_IGNORE);
+}
+
 void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_devices, cl_device_id **devices, unsigned int flags) {
   cl_int errcode;
   cl_uint size_platforms;
@@ -235,15 +247,7 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
     mpi_number = function == SGEMM ? MPI_FLOAT : MPI_DOUBLE;
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
-      char* universe_size = getenv("MPI_UNIVERSE_SIZE");
-      if(universe_size == NULL) {
-        printf("MPI_UNIVERSE_SIZE is not set\n");
-        return;
-      }
-      mpi_size = atoi(universe_size);
-      char* mpi_helper = (char *) "mpihelper";
-      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
-                    MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
+      mpi_spawn(&intercomm, &mpi_size);
       root_argument = MPI_ROOT;
       spawns_m = m/mpi_size;
 
@@ -497,15 +501,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     mpi_number = function == STRMM ? MPI_FLOAT : MPI_DOUBLE;
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
-      char* universe_size = getenv("MPI_UNIVERSE_SIZE");
-      if(universe_size == NULL) {
-        printf("MPI_UNIVERSE_SIZE is not set\n");
-        return;
-      }
-      mpi_size = atoi(universe_size);
-      char* mpi_helper = (char *) "mpihelper";
-      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
-                    MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
+      mpi_spawn(&intercomm, &mpi_size);
       root_argument = MPI_ROOT;
       MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
 
