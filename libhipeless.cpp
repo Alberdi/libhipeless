@@ -48,7 +48,7 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
   checkErr(errcode, "clGetContextInfo3");
 }
 
-void opencl_finalize(cl_uint num_devices, cl_command_queue *command_queues, cl_kernel kernel, cl_program program, cl_context context) {
+void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues, cl_uint num_devices) {
   for(int i=0; i < num_devices; i++) {
     clFinish(command_queues[i]);
     clReleaseCommandQueue(command_queues[i]);
@@ -210,7 +210,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  opencl_finalize(num_devices, command_queues, kernel, program, context);
+  opencl_finalize(context, program, kernel, command_queues, num_devices);
 }
 
 // C = alpha*op(A)*op(B) + beta*C
@@ -466,7 +466,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  opencl_finalize(num_devices, command_queues, kernel, program, context);
+  opencl_finalize(context, program, kernel, command_queues, num_devices);
 }
 
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
