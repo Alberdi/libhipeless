@@ -503,7 +503,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
 
   left = side == 'L' || side == 'l';
   upper = uplo == 'U' || uplo == 'u';
-  unit = diag == 'U' || diag == 'u';
+  unit = diag == 'U' || diag == 'u' ? 1 : 0;
   nota = transa == 'N' || transa == 'n';
 
   dim = left ? m : n;
@@ -564,13 +564,12 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         // Send A, each node i needs rows[i] rows of A
         for(j = 0; j < rows[i+1]; j++) {
-          // We transmit the whole diagonal even though it might not be used
           if(nota) {
             if(upper) {
-              MPI_Send(&a[(row+j)*lda + row + j], dim-j, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+              MPI_Send(&a[(row+j)*lda + row + j + unit], dim-j-unit, mpi_number, i, XTRMM_TAG_DATA, intercomm);
             }
             else {
-              MPI_Send(&a[(row+j)*lda], dim-rows[i+1]-1+j, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+              MPI_Send(&a[(row+j)*lda], dim-rows[i+1]-1+j-unit, mpi_number, i, XTRMM_TAG_DATA, intercomm);
             }
           }
         }
@@ -596,10 +595,10 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       for(j = 0; j < row; j++) {
         if(nota) {
           if(upper) {
-            MPI_Recv(&a[j*lda + j], dim-j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+            MPI_Recv(&a[j*lda + j + unit], dim-j-unit, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
           }
           else {
-            MPI_Recv(&a[j*lda], dim-row-1+j, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+            MPI_Recv(&a[j*lda], dim-row-1+j-unit, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
           }
         }
       }
