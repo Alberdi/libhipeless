@@ -91,11 +91,11 @@ __kernel void blas_dgemm(int nota, int notb, int m, int n, int k, double alpha, 
 
   // Declaration of the local memory array As 
   // used to store the sub-matrix of a
-  __local float As[BLOCK_SIZE][BLOCK_SIZE];
+  __local double As[BLOCK_SIZE][BLOCK_SIZE];
                            
   // Declaration of the local memory array Bs 
   // used to store the sub-matrix of b
-  __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
+  __local double Bs[BLOCK_SIZE][BLOCK_SIZE];
 
   for(int i=0; i<k; i+=BLOCK_SIZE) {
     // Load the matrices from global memory to local memory;
