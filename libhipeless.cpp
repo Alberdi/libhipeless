@@ -17,11 +17,72 @@ inline void checkErr(cl_int errcode, const char* name) {
   }
 }
 
-std::string readKernelFromSource(const char* source) {
-    std::ifstream file(source);
-    checkErr(file.is_open() ? CL_SUCCESS : -1, "ifstream()");
-    std::string sourceString(std::istreambuf_iterator<char>(file), (std::istreambuf_iterator<char>()));
-    return sourceString;
+void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
+  char* universe_size = getenv("MPI_UNIVERSE_SIZE");
+  if(universe_size == NULL) {
+    fprintf(stderr, "MPI_UNIVERSE_SIZE is not set\n");
+    exit(EXIT_FAILURE);
+  }
+  *mpi_size = atoi(universe_size);
+  char* mpi_helper = (char *) "mpihelper";
+  MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, *mpi_size-1, MPI_INFO_NULL, 0,
+                 MPI_COMM_SELF, intercomm, MPI_ERRCODES_IGNORE);
+}
+
+void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_devices, cl_device_id **devices, unsigned int flags) {
+  cl_int errcode;
+  cl_uint size_platforms;
+  
+  errcode = clGetPlatformIDs(0, NULL, &size_platforms);
+  cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
+  errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
+  checkErr(errcode, "clGetPlatformIDs");
+
+  // TODO Following line is not applicable to all the possible setups
+  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
+
+  *context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
+  checkErr(errcode, "clCreateContextFromType");
+
+  errcode = clGetContextInfo(*context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), num_devices, NULL);
+  checkErr(errcode, "clGetContextInfo1");
+  errcode = clGetContextInfo(*context, CL_CONTEXT_DEVICES, 0, NULL, size_devices);
+  checkErr(errcode, "clGetContextInfo2");
+  *devices = (cl_device_id *) malloc(*size_devices);
+  errcode = clGetContextInfo(*context, CL_CONTEXT_DEVICES, *size_devices, *devices, NULL);
+  checkErr(errcode, "clGetContextInfo3");
+}
+
+void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues, cl_uint num_devices) {
+  for(int i=0; i < num_devices; i++) {
+    clFinish(command_queues[i]);
+    clReleaseCommandQueue(command_queues[i]);
+  }
+
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  clReleaseContext(context);
+}
+
+void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kernel, cl_device_id* devices, size_t size_devices,
+                        const char *filename, const char *kernelfunction) {
+  cl_int errcode;
+
+  // Load the filen into source
+  std::ifstream file(filename);
+  checkErr(file.is_open() ? CL_SUCCESS : -1, "ifstream()");
+  std::string sourceString(std::istreambuf_iterator<char>(file), (std::istreambuf_iterator<char>()));
+  const char *source = sourceString.c_str();
+
+  size_t size_source[] = { strlen(source) };
+  *program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
+  checkErr(errcode, "clCreateProgramWithSource");
+
+  errcode = clBuildProgram(*program, size_devices/sizeof(cl_device_id), devices, NULL, NULL, NULL);
+  checkErr(errcode, "clBuildProgram");
+
+  *kernel = clCreateKernel(*program, kernelfunction, &errcode);
+  checkErr(errcode, "clCreateKernel");
 }
 
 template <typename number>
@@ -43,31 +104,15 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   const char *source;
   size_t size_devices;
   size_t global_work_size[2];
-  size_t local_work_size[2];
+  size_t local_work_size[2] = {BLOCK_SIZE, BLOCK_SIZE};
 
+  // global_work_size[0] will be determined for each device on the platform,
+  // because the last one might have a bit more of work to do.
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
-  local_work_size[0] = BLOCK_SIZE;
-  local_work_size[1] = BLOCK_SIZE;
 
-  cl_uint size_platforms;
-  errcode = clGetPlatformIDs(0, NULL, &size_platforms);
-  cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
-  errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
-  checkErr(errcode, "clGetPlatformIDs");
-  // TODO Following line is not applicable to all the possible setups
-  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
-
-  context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
-  checkErr(errcode, "clCreateContextFromType");
-
-  errcode = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &num_devices, NULL);
-  checkErr(errcode, "clGetContextInfo1");
-  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &size_devices);
-  checkErr(errcode, "clGetContextInfo2");
-  devices = (cl_device_id *) malloc(size_devices);
-  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, size_devices, devices, NULL);
-  checkErr(errcode, "clGetContextInfo3");
-
+  opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "operations.cl", kernelfunction);
+  
   dev_m = m/num_devices;
   last_dev_m = m - dev_m*(num_devices-1);
 
@@ -77,17 +122,6 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, k*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
 
-  source = readKernelFromSource("operations.cl").c_str();
-  size_t size_source[] = { strlen(source) };
-  program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
-  checkErr(errcode, "clCreateProgramWithSource");
-
-  errcode = clBuildProgram(program, size_devices/sizeof(cl_device_id), devices, NULL, NULL, NULL);
-  checkErr(errcode, "clBuildProgram");
-
-  kernel = clCreateKernel(program, kernelfunction, &errcode);
-  checkErr(errcode, "clCreateKernel");
-   
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
@@ -183,14 +217,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  for(i=0; i < num_devices; i++) {
-    clFinish(command_queues[i]);
-    clReleaseCommandQueue(command_queues[i]);
-  }
-
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
-  clReleaseContext(context);
+  opencl_finalize(context, program, kernel, command_queues, num_devices);
 }
 
 // C = alpha*op(A)*op(B) + beta*C
@@ -215,15 +242,7 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
     mpi_number = function == SGEMM ? MPI_FLOAT : MPI_DOUBLE;
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
-      char* universe_size = getenv("MPI_UNIVERSE_SIZE");
-      if(universe_size == NULL) {
-        printf("MPI_UNIVERSE_SIZE is not set\n");
-        return;
-      }
-      mpi_size = atoi(universe_size);
-      char* mpi_helper = (char *) "mpihelper";
-      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
-                    MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
+      mpi_spawn(&intercomm, &mpi_size);
       root_argument = MPI_ROOT;
       spawns_m = m/mpi_size;
 
@@ -353,31 +372,15 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   const char *source;
   size_t size_devices;
   size_t global_work_size[2];
-  size_t local_work_size[2];
+  size_t local_work_size[2] = {BLOCK_SIZE, BLOCK_SIZE};
 
+  // global_work_size[0] will be determined for each device on the platform,
+  // because the last one might have a bit more of work to do.
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
-  local_work_size[0] = BLOCK_SIZE;
-  local_work_size[1] = BLOCK_SIZE;
 
-  cl_uint size_platforms;
-  errcode = clGetPlatformIDs(0, NULL, &size_platforms);
-  cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
-  errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
-  checkErr(errcode, "clGetPlatformIDs");
-  // TODO Following line is not applicable to all the possible setups
-  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
-
-  context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
-  checkErr(errcode, "clCreateContextFromType");
-
-  errcode = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &num_devices, NULL);
-  checkErr(errcode, "clGetContextInfo1");
-  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &size_devices);
-  checkErr(errcode, "clGetContextInfo2");
-  devices = (cl_device_id *) malloc(size_devices);
-  errcode = clGetContextInfo(context, CL_CONTEXT_DEVICES, size_devices, devices, NULL);
-  checkErr(errcode, "clGetContextInfo3");
-
+  opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "operations.cl", kernelfunction);
+  
   dev_row = row/num_devices;
   last_dev_row = row - dev_row*(num_devices-1);
 
@@ -386,17 +389,6 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
 
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, m*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
-
-  source = readKernelFromSource("operations.cl").c_str();
-  size_t size_source[] = { strlen(source) };
-  program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
-  checkErr(errcode, "clCreateProgramWithSource");
-
-  errcode = clBuildProgram(program, size_devices/sizeof(cl_device_id), devices, NULL, NULL, NULL);
-  checkErr(errcode, "clBuildProgram");
-
-  kernel = clCreateKernel(program, kernelfunction, &errcode);
-  checkErr(errcode, "clCreateKernel");
    
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
@@ -475,14 +467,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  for(i=0; i < num_devices; i++) {
-    clFinish(command_queues[i]);
-    clReleaseCommandQueue(command_queues[i]);
-  }
-
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
-  clReleaseContext(context);
+  opencl_finalize(context, program, kernel, command_queues, num_devices);
 }
 
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
@@ -513,15 +498,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     mpi_number = function == STRMM ? MPI_FLOAT : MPI_DOUBLE;
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
-      char* universe_size = getenv("MPI_UNIVERSE_SIZE");
-      if(universe_size == NULL) {
-        printf("MPI_UNIVERSE_SIZE is not set\n");
-        return;
-      }
-      mpi_size = atoi(universe_size);
-      char* mpi_helper = (char *) "mpihelper";
-      MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
-                    MPI_COMM_SELF, &intercomm, MPI_ERRCODES_IGNORE);
+      mpi_spawn(&intercomm, &mpi_size);
       root_argument = MPI_ROOT;
       MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
 
