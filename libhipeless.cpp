@@ -17,13 +17,6 @@ inline void checkErr(cl_int errcode, const char* name) {
   }
 }
 
-std::string readKernelFromSource(const char* source) {
-    std::ifstream file(source);
-    checkErr(file.is_open() ? CL_SUCCESS : -1, "ifstream()");
-    std::string sourceString(std::istreambuf_iterator<char>(file), (std::istreambuf_iterator<char>()));
-    return sourceString;
-}
-
 void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
   char* universe_size = getenv("MPI_UNIVERSE_SIZE");
   if(universe_size == NULL) {
