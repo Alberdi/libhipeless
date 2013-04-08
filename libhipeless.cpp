@@ -503,7 +503,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
 
       rows = (int *) malloc(mpi_size*sizeof(int));
-      dim = left ? m : n;
       elems = (dim*dim+dim)/mpi_size;
       start = upper ? 0 : mpi_size-1;
       end = upper ? mpi_size-1 : 0;
