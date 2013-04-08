@@ -111,7 +111,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "operations.cl", kernelfunction);
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xgemm.cl", kernelfunction);
   
   dev_m = m/num_devices;
   last_dev_m = m - dev_m*(num_devices-1);
@@ -379,7 +379,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "operations.cl", kernelfunction);
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xtrmm.cl", kernelfunction);
   
   dev_row = row/num_devices;
   last_dev_row = row - dev_row*(num_devices-1);
