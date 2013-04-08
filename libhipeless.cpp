@@ -523,6 +523,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
 
   if(flags & USE_MPI) {
     // Broadcast common parameters
+    MPI_Bcast(&m, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&n, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&alpha, 1, mpi_number, root_argument, intercomm);
     MPI_Bcast(&flags, 1, MPI_UNSIGNED, root_argument, intercomm);
@@ -535,7 +536,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       row = 0;
       for(i = 0; i < mpi_size-1; i++) {
         row += rows[i];
-        dim = upper ? m-row : row+rows[i];
+        dim = upper ? (left ? m-row : n-row) : row+rows[i];
         MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         // Send A, each node i needs rows[i] rows of A
@@ -555,7 +556,8 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
           MPI_Send(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
         }
       }
-      dim = m;
+      // Restore dim and row values for parent operation
+      dim = left ? m : n;
       row = rows[0];
     }
     else {
@@ -563,10 +565,15 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       MPI_Recv(&row, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       MPI_Recv(&dim, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       lda = dim;
-      ldb = n;
-      m = dim;
+      ldb = m;
+      if(left) {
+        m = dim;
+      }
+      else {
+        n = dim;
+      }
       a = (number *) malloc(row*dim*sizeof(number));
-      b = (number *) malloc(dim*n*sizeof(number));
+      b = (number *) malloc(m*n*sizeof(number));
       // Recv A
       for(j = 0; j < row; j++) {
         if(nota) {
