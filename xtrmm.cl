@@ -28,7 +28,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
     // Barriers are used for synchronization and to be sure we don't
     // overwrite an address that is going to be used
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(x >= row || i+ty >= dim || i+ty < x)
+    if(x >= row || i+ty >= dim || (upper && i+ty < x) || (!upper && i+ty > dim-row+x))
       As[tx][ty] = 0;
     else {
       if(unit && x == i+ty)

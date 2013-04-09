@@ -541,7 +541,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       row = 0;
       for(i = 0; i < mpi_size-1; i++) {
         row += rows[i];
-        dim = upper ? (left ? m-row : n-row) : row;
+        dim = upper ? (left ? m-row : n-row) : rows[i]+rows[i+1];
         MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         // Send A, each node i needs rows[i] rows of A
@@ -551,7 +551,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
               MPI_Send(&a[(row+j)*lda + row + j + unit], dim-j-unit, mpi_number, i, XTRMM_TAG_DATA, intercomm);
             }
             else {
-              MPI_Send(&a[(row+j)*lda], dim-1+j-unit, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+              MPI_Send(&a[(row+j)*lda], row+1+j-unit, mpi_number, i, XTRMM_TAG_DATA, intercomm);
             }
           }
         }
@@ -562,7 +562,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         }
       }
       // Restore dim and row values for parent operation
-      dim = left ? m : n;
+      dim = upper ? (left ? m : n) : rows[0];
       row = rows[0];
     }
     else {
@@ -586,7 +586,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
             MPI_Recv(&a[j*lda + j + unit], dim-j-unit, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
           }
           else {
-            MPI_Recv(&a[j*lda], dim-1+j-unit, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+            MPI_Recv(&a[j*lda], dim-row+1+j-unit, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
           }
         }
       }
@@ -606,15 +606,15 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       // We recover the chunks in order because otherwise we wouldn't know where to place them
       for(i = 0; i < mpi_size-1; i++) {
         row += rows[i];
-        dim = upper ? m-row : row+rows[i];
+        dim = upper ? m-row : row;
         for(j = 0; j < dim; j++) {
-          MPI_Recv(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+          MPI_Recv(&b[(row+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
         }
       }
     }
     else {
       // Send B
-      for(j = 0; j < dim; j++) {
+      for(j = 0; j < m; j++) {
         MPI_Send(&b[j*ldb], n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
       }
       free(a);

@@ -55,13 +55,13 @@ int main(int argc, char* argv[]) {
   ldb = colsb+(rand()%max_size)+1;
   ldc = n+(rand()%max_size)+1;
 
-  rowsa = 64;
-  colsa = 64;
-  lda = 64;
+  rowsa = 8;
+  colsa = 8;
+  lda = 8;
 
-  rowsb = 64;
-  colsb = 64;
-  ldb = 64;
+  rowsb = 8;
+  colsb = 8;
+  ldb = 8;
 
   a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
   b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
@@ -71,12 +71,7 @@ int main(int argc, char* argv[]) {
   for(i=0; i<rowsa; i++) {
     for(j=0; j<colsa; j++) {
       //a[i*lda+j] = (float)(rand() % 256);
-      if(j < i) {
-        a[i*lda+j] = 0;
-      }
-      else {
-        a[i*lda+j] = j+1;
-      }
+      a[i*lda+j] = j+1;
       PM printf("%.0f ", a[i*lda+j]);
     }
     PM printf("\n");
@@ -85,7 +80,8 @@ int main(int argc, char* argv[]) {
   PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<rowsb; i++) {
     for(j=0; j<colsb; j++) {
-      b[i*ldb+j] = (float)(rand() % 6);
+      //b[i*ldb+j] = (float)(rand() % 256);
+      b[i*ldb+j] = i*colsb+j;
       PM printf("%.0f ", b[i*ldb+j]);
     }
     PM printf("\n");
@@ -100,7 +96,7 @@ int main(int argc, char* argv[]) {
   alpha = 1;
   beta = 1.5;
 //  blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
-  blas_strmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
+  blas_strmm('L', 'L', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
 
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<rowsb; i++) {
