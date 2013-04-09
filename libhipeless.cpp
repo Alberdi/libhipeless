@@ -18,10 +18,13 @@ inline void checkErr(cl_int errcode, const char* name) {
 }
 
 void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
-  char* universe_size = getenv("MPI_UNIVERSE_SIZE");
+  char* universe_size = getenv("HIPELESS_UNIVERSE_SIZE");
   if(universe_size == NULL) {
-    fprintf(stderr, "MPI_UNIVERSE_SIZE is not set\n");
-    exit(EXIT_FAILURE);
+    universe_size = getenv("MPI_UNIVESE_SIZE");
+    if(universe_size == NULL) {
+      fprintf(stderr, "Neither HIPELESS_UNIVERSE_SIZE nor MPI_UNIVERSE_SIZE are set.\n");
+      exit(EXIT_FAILURE);
+    }
   }
   *mpi_size = atoi(universe_size);
   char* mpi_helper = (char *) "mpihelper";
