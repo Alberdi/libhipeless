@@ -544,7 +544,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       row = 0;
       for(i = 0; i < mpi_size-1; i++) {
         row += rows[i];
-        dim = upper ? (left ? m-row : n-row) : rows[i]+rows[i+1];
+        dim = upper ? (left ? m-row : n-row) : row+rows[i+1];
         MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         // Send A, each node i needs rows[i] rows of A
@@ -559,9 +559,15 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
           }
         }
         // Send B, we don't need to send the rows that would be multiplied by zero
-        // Only the last dim rows are needed
         for(j = 0; j < dim; j++) {
-          MPI_Send(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+          if(upper) {
+            // Only the last dim rows are needed
+            MPI_Send(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+          }
+          else {
+            // Only the first dim rows are needed
+            MPI_Send(&b[j*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+          }
         }
       }
       // Restore dim and row values for parent operation
