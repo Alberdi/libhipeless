@@ -20,7 +20,7 @@ inline void checkErr(cl_int errcode, const char* name) {
 void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
   char* universe_size = getenv("HIPELESS_UNIVERSE_SIZE");
   if(universe_size == NULL) {
-    universe_size = getenv("MPI_UNIVESE_SIZE");
+    universe_size = getenv("MPI_UNIVERSE_SIZE");
     if(universe_size == NULL) {
       fprintf(stderr, "Neither HIPELESS_UNIVERSE_SIZE nor MPI_UNIVERSE_SIZE are set.\n");
       exit(EXIT_FAILURE);
