@@ -37,7 +37,7 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
   cl_uint size_platforms;
   
   errcode = clGetPlatformIDs(0, NULL, &size_platforms);
-  cl_platform_id* platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id)*size_platforms);
+  cl_platform_id platforms[size_platforms];
   errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
   checkErr(errcode, "clGetPlatformIDs");
 
@@ -56,7 +56,8 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
   checkErr(errcode, "clGetContextInfo3");
 }
 
-void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues, cl_uint num_devices) {
+void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues, cl_uint num_devices,
+                     cl_device_id *devices, cl_mem *memC) {
   for(int i=0; i < num_devices; i++) {
     clFinish(command_queues[i]);
     clReleaseCommandQueue(command_queues[i]);
@@ -65,6 +66,10 @@ void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, c
   clReleaseKernel(kernel);
   clReleaseProgram(program);
   clReleaseContext(context);
+
+  free(command_queues);
+  free(devices);
+  free(memC);
 }
 
 void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kernel, cl_device_id* devices, size_t size_devices,
@@ -220,7 +225,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  opencl_finalize(context, program, kernel, command_queues, num_devices);
+  opencl_finalize(context, program, kernel, command_queues, num_devices, devices, memC);
 }
 
 // C = alpha*op(A)*op(B) + beta*C
@@ -470,7 +475,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  opencl_finalize(context, program, kernel, command_queues, num_devices);
+  opencl_finalize(context, program, kernel, command_queues, num_devices, devices, memC);
 }
 
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
