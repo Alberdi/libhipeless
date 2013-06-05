@@ -26,6 +26,5 @@ int main(int argc, char* argv[]) {
     blas_dtrmm('0', '0', '0', '0', 0, 0, 0, NULL, 0, NULL, 0, flags);
   }
 
-
   MPI_Finalize();
 }
