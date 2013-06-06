@@ -584,7 +584,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       MPI_Recv(&row, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       MPI_Recv(&dim, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       lda = dim;
-      ldb = m;
+      ldb = n;
       if(left) {
         m = dim;
       }
@@ -621,14 +621,14 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       for(i = 0; i < mpi_size-1; i++) {
         row += rows[i];
         dim = upper ? m-row : row;
-        for(j = 0; j < dim; j++) {
+        for(j = 0; j < rows[i+1]; j++) {
           MPI_Recv(&b[(row+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
         }
       }
     }
     else {
       // Send B
-      for(j = 0; j < m; j++) {
+      for(j = 0; j < row; j++) {
         MPI_Send(&b[j*ldb], n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
       }
       free(a);

@@ -57,11 +57,11 @@ int main(int argc, char* argv[]) {
 
   rowsa = 8;
   colsa = 8;
-  lda = 8;
+  lda = 17;
 
   rowsb = 8;
   colsb = 8;
-  ldb = 8;
+  ldb = 13;
 
   a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
   b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
