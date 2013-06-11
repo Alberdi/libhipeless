@@ -400,7 +400,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_row*dim*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferA");
 
-  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, m*n*sizeof(number), NULL, &errcode);
+  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, dim*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
    
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
@@ -433,9 +433,9 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(errcode, "clEnqueueWriteBufferA");
 
     // Load full consecutive rows of b
-    if(n == lda) {
+    if(n == ldb) {
       // In this case, we can write it all in one call
-      errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, m*n*sizeof(number), b, 0, NULL, NULL);
+      errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, dim*n*sizeof(number), b, 0, NULL, NULL);
     }
     else {
       for(l=0; l<dim; l++) {
