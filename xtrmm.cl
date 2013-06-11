@@ -45,7 +45,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
     for(int l=0; l<BLOCK_SIZE; l++)
       Csub += As[tx][l] * Bs[l][ty];
   }
-  if(x < dim && y < n) { // In bounds
+  if(x < row && y < n) { // In bounds
     c[x*n+y] = alpha*Csub;
   }
 }
