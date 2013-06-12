@@ -17,8 +17,10 @@ int main(int argc, char* argv[]) {
   unsigned int flags = USE_CPU | USE_MPI;
   cl_int i, j, m, k, n;
   cl_int lda, ldb, ldc;
-  cl_float *a, *b, *c;
-  cl_float alpha, beta;
+  //cl_float *a, *b, *c;
+  //cl_float alpha, beta;
+  cl_double *a, *b, *c;
+  cl_double alpha, beta;
   cl_char transa, transb;
   int rowsa, colsa, rowsb, colsb;
 
@@ -55,17 +57,20 @@ int main(int argc, char* argv[]) {
   ldb = colsb+(rand()%max_size)+1;
   ldc = n+(rand()%max_size)+1;
 
-  rowsa = 8;
-  colsa = 8;
-  lda = 17;
+  rowsa = 425;
+  colsa = 425;
+  lda = 470;
 
-  rowsb = 8;
-  colsb = 8;
-  ldb = 13;
+  rowsb = 425;
+  colsb = 315;
+  ldb = 754;
 
-  a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
-  b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
-  c = (cl_float *) malloc(m*ldc*sizeof(cl_float));
+  //a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
+  //b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
+  //c = (cl_float *) malloc(m*ldc*sizeof(cl_float));
+  a = (cl_double *) malloc(rowsa*lda*sizeof(cl_double));
+  b = (cl_double *) malloc(rowsb*ldb*sizeof(cl_double));
+  c = (cl_double *) malloc(m*ldc*sizeof(cl_double));
 
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
@@ -96,7 +101,7 @@ int main(int argc, char* argv[]) {
   alpha = 1;
   beta = 1.5;
 //  blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
-  blas_strmm('L', 'L', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
+  blas_dtrmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
 
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<rowsb; i++) {
