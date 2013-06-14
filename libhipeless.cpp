@@ -87,6 +87,20 @@ void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kern
   checkErr(errcode, "clCreateProgramWithSource");
 
   errcode = clBuildProgram(*program, size_devices/sizeof(cl_device_id), devices, NULL, NULL, NULL);
+  if(errcode == CL_BUILD_PROGRAM_FAILURE) {
+    // Determine the size of the log
+    size_t log_size;
+    clGetProgramBuildInfo(*program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+    
+    // Allocate memory for the log
+    char *log = (char *) malloc(log_size);
+    
+    // Get the log
+    clGetProgramBuildInfo(*program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+    
+    // Print the log
+    printf("%s\n", log);
+  }
   checkErr(errcode, "clBuildProgram");
 
   *kernel = clCreateKernel(*program, kernelfunction, &errcode);
