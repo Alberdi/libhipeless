@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define PRINT_MATRICES 1
+//#define PRINT_MATRICES 1
 
 #ifdef PRINT_MATRICES
   #define PM if(1)
@@ -14,15 +14,16 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_CPU | USE_MPI;
+  unsigned int flags = USE_GPU;
   cl_int i, j, m, k, n;
   cl_int lda, ldb, ldc;
-  //cl_float *a, *b, *c;
-  //cl_float alpha, beta;
-  cl_double *a, *b, *c;
-  cl_double alpha, beta;
+  cl_float *a, *b, *c;
+  cl_float alpha, beta;
+  //cl_double *a, *b, *c;
+  //cl_double alpha, beta;
   cl_char transa, transb;
   int rowsa, colsa, rowsb, colsb;
+  time_t t0, t1;
 
   if(flags & USE_MPI) {
     MPI_Init(&argc, &argv);
@@ -57,20 +58,20 @@ int main(int argc, char* argv[]) {
   ldb = colsb+(rand()%max_size)+1;
   ldc = n+(rand()%max_size)+1;
 
-  rowsa = 425;
-  colsa = 425;
-  lda = 470;
+  rowsa = 4250;
+  colsa = 4250;
+  lda = 4700;
 
-  rowsb = 425;
-  colsb = 315;
-  ldb = 754;
+  rowsb = 4250;
+  colsb = 3150;
+  ldb = 3150;
 
-  //a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
-  //b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
-  //c = (cl_float *) malloc(m*ldc*sizeof(cl_float));
-  a = (cl_double *) malloc(rowsa*lda*sizeof(cl_double));
-  b = (cl_double *) malloc(rowsb*ldb*sizeof(cl_double));
-  c = (cl_double *) malloc(m*ldc*sizeof(cl_double));
+  a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
+  b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
+  c = (cl_float *) malloc(m*ldc*sizeof(cl_float));
+  //a = (cl_double *) malloc(rowsa*lda*sizeof(cl_double));
+  //b = (cl_double *) malloc(rowsb*ldb*sizeof(cl_double));
+  //c = (cl_double *) malloc(m*ldc*sizeof(cl_double));
 
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
@@ -100,8 +101,11 @@ int main(int argc, char* argv[]) {
 
   alpha = 1;
   beta = 1.5;
-//  blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
-  blas_dtrmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
+
+  t0 = time(NULL);
+  //blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
+  blas_strmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
+  t1 = time(NULL);
 
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<rowsb; i++) {
@@ -110,6 +114,8 @@ int main(int argc, char* argv[]) {
     }
     PM printf("\n");
   }
+
+  printf("Elapsed time %ld\n", t1-t0);
 
 /*  // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
