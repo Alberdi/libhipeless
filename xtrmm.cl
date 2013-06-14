@@ -50,6 +50,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
   }
 }
 
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
 __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int dim, int m, int n,
                          double alpha, __global const double *a, __global const double *b, __global double *c) {
   double Csub = 0;
@@ -97,4 +98,3 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
     c[x*n+y] = alpha*Csub;
   }
 }
-
