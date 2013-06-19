@@ -41,10 +41,14 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
   errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
   checkErr(errcode, "clGetPlatformIDs");
 
-  // TODO Following line is not applicable to all the possible setups
-  cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[flags&USE_CPU ? 0 : 1], 0};
-
-  *context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
+  for(int i = 0; i < size_platforms; i++) {
+    cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[i], 0};
+    *context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
+    if(errcode == CL_SUCCESS) {
+      // We found a suitable platform
+      break;
+    }
+  }
   checkErr(errcode, "clCreateContextFromType");
 
   errcode = clGetContextInfo(*context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), num_devices, NULL);
