@@ -1,4 +1,4 @@
-FLAGS = -O3 -L /opt/AMDAPP/lib/x86_64/ -l OpenCL -I /opt/AMDAPP/include/
+FLAGS = -O3 -l OpenCL
 
 all: main mpihelper
 
