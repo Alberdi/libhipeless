@@ -14,7 +14,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_GPU;
+  unsigned int flags = USE_MPI | USE_GPU;
   cl_int i, j, m, k, n;
   cl_int lda, ldb, ldc;
   cl_float *a, *b, *c;
@@ -34,6 +34,9 @@ int main(int argc, char* argv[]) {
   m = (int)(rand()%max_size)+16;
   k = (int)(rand()%max_size)+16;
   n = (int)(rand()%max_size)+16;
+  m = 1000;
+  n = 1000;
+  k = 1000;
 
   transa = 'N';
   if(transa == 'N') {
@@ -44,9 +47,9 @@ int main(int argc, char* argv[]) {
     rowsa = k;
     colsa = m;
   }
-  lda = colsa+(rand()%max_size)+1;
+  lda = colsa;
 
-  transb = 'T';
+  transb = 'N';
   if(transb == 'N') {
     rowsb = k;
     colsb = n;
@@ -55,16 +58,8 @@ int main(int argc, char* argv[]) {
     rowsb = n;
     colsb = k;
   }
-  ldb = colsb+(rand()%max_size)+1;
-  ldc = n+(rand()%max_size)+1;
-
-  rowsa = 4250;
-  colsa = 4250;
-  lda = 4700;
-
-  rowsb = 4250;
-  colsb = 3150;
-  ldb = 3150;
+  ldb = colsb;
+  ldc = n;
 
   a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
   b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
@@ -99,10 +94,19 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  alpha = 1;
+  alpha = 1.2;
   beta = 1.5;
 
   t0 = time(NULL);
+/*        for(i=0;i<rowsa;i++)
+        {
+            for(j=0;j<colsb;j++)
+            {
+                c[i*rowsa+j]=0;
+                for(k=0;k<rowsa;k++)
+                    c[i*rowsa+j]+=a[i*rowsa+k]*b[k*rowsb+j];
+            }
+        }*/
   //blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
   blas_strmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
   t1 = time(NULL);
