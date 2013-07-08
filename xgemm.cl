@@ -61,6 +61,7 @@ __kernel void blas_sgemm(int nota, int notb, int m, int n, int k, float alpha, _
   }
 }
 
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
 __kernel void blas_dgemm(int nota, int notb, int m, int n, int k, double alpha, __global const double *a,
                          __global const double *b, double beta, __global double *c) {
 
