@@ -3,7 +3,7 @@
 #include <mpi.h>
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_MPI | NON_MPI_ROOT;
+  unsigned int flags = USE_MPI;
   int function;
 
   MPI_Init(&argc, &argv);

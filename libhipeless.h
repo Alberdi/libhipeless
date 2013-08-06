@@ -15,7 +15,6 @@
 #define USE_CPU 0x01
 #define USE_GPU 0x02
 #define USE_MPI 0x04
-#define NON_MPI_ROOT 0x08
 
 #include "libhipeless.cpp"
 

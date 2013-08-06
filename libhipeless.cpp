@@ -319,7 +319,6 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
     MPI_Bcast(&notb, 1, MPI_INTEGER, root_argument, intercomm);
 
     if(parent != MPI_COMM_NULL) {
-      flags |= NON_MPI_ROOT;
       m = spawns_m;
       lda = nota ? k : m;
       ldb = notb ? n : k;
@@ -598,7 +597,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       row = rows[0];
     }
     else {
-      flags |= NON_MPI_ROOT;
       MPI_Recv(&row, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       MPI_Recv(&dim, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       lda = dim;
