@@ -248,7 +248,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
 
 // C = alpha*op(A)*op(B) + beta*C
 template <typename number>
-void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
+void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,
                 number alpha, number *a, cl_int lda, number *b, cl_int ldb,
                 number beta, number *c, cl_int ldc, unsigned int flags) {
 
