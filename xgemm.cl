@@ -24,10 +24,8 @@ __kernel void blas_sgemm(int nota, int notb, int m, int n, int k, float alpha, _
   __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
 
   for(int i=0; i<k; i+=BLOCK_SIZE) {
-    // Load the matrices from global memory to local memory;
-    // each thread loads one element of each matrix
-    // Barriers are used for synchronization and to be sure we don't
-    // overwrite an address that is going to be used
+    // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
+    // Barriers are used to be sure we don't overwrite an address that is going to be used.
     ca = i+ty;
     rb = i+tx;
     barrier(CLK_LOCAL_MEM_FENCE);
@@ -85,10 +83,8 @@ __kernel void blas_dgemm(int nota, int notb, int m, int n, int k, double alpha, 
   __local double Bs[BLOCK_SIZE][BLOCK_SIZE];
 
   for(int i=0; i<k; i+=BLOCK_SIZE) {
-    // Load the matrices from global memory to local memory;
-    // each thread loads one element of each matrix
-    // Barriers are used for synchronization and to be sure we don't
-    // overwrite an address that is going to be used
+    // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
+    // Barriers are used to be sure we don't overwrite an address that is going to be used.
     ca = i+ty;
     rb = i+tx;
     barrier(CLK_LOCAL_MEM_FENCE);
