@@ -22,7 +22,12 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
   // used to store the sub-matrix of b
   __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
 
-  for(int i=0; i<dim; i+=BLOCK_SIZE) {
+  // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
+  int start = upper ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
+  // On lower triangular matrices, we can skip the last blocks full of zeroes.
+  int end = upper ? dim : dim - ((row-1-x)/BLOCK_SIZE) * BLOCK_SIZE;
+
+  for(int i=start; i<end; i+=BLOCK_SIZE) {
     // Load the matrices from global memory to local memory;
     // each thread loads one element of each matrix
     // Barriers are used for synchronization and to be sure we don't
@@ -71,7 +76,12 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
   // used to store the sub-matrix of b
   __local double Bs[BLOCK_SIZE][BLOCK_SIZE];
 
-  for(int i=0; i<dim; i+=BLOCK_SIZE) {
+  // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
+  int start = upper ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
+  // On lower triangular matrices, we can skip the last blocks full of zeroes.
+  int end = upper ? dim : dim - ((row-1-x)/BLOCK_SIZE) * BLOCK_SIZE;
+
+  for(int i=start; i<end; i+=BLOCK_SIZE) {
     // Load the matrices from global memory to local memory;
     // each thread loads one element of each matrix
     // Barriers are used for synchronization and to be sure we don't
