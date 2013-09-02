@@ -31,7 +31,7 @@ __kernel void blas_sgemm(int nota, int notb, int m, int n, int k, float alpha, _
     ca = i+ty;
     rb = i+tx;
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(x >= m || ca >= k)
+    if(x >= m || ca >= k) // Out of bounds, treat as zero.
       As[tx][ty] = 0;
     else {
       if(nota)
@@ -40,7 +40,7 @@ __kernel void blas_sgemm(int nota, int notb, int m, int n, int k, float alpha, _
         As[tx][ty] = a[ca*m+x];
     }
 
-    if(rb >= k || y >= n)
+    if(rb >= k || y >= n) // Out of bounds, treat as zero.
       Bs[tx][ty] = 0;
     else {
       if(notb)
@@ -92,7 +92,7 @@ __kernel void blas_dgemm(int nota, int notb, int m, int n, int k, double alpha, 
     ca = i+ty;
     rb = i+tx;
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(x >= m || ca >= k)
+    if(x >= m || ca >= k) // Out of bounds, treat as zero.
       As[tx][ty] = 0;
     else {
       if(nota)
@@ -101,7 +101,7 @@ __kernel void blas_dgemm(int nota, int notb, int m, int n, int k, double alpha, 
         As[tx][ty] = a[ca*m+x];
     }
 
-    if(rb >= k || y >= n)
+    if(rb >= k || y >= n) // Out of bounds, treat as zero.
       Bs[tx][ty] = 0;
     else {
       if(notb)
