@@ -179,7 +179,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
 
     if(notb) {
       // Load full consecutive rows of b
-      if(n == lda) {
+      if(n == ldb) {
         // In this case, we can write it all in one call
         errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, k*n*sizeof(number), b, 0, NULL, NULL);
       }
