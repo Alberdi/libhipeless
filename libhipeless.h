@@ -14,7 +14,11 @@
 
 #define USE_CPU 0x01
 #define USE_GPU 0x02
-#define USE_MPI 0x04
+#define USE_ACCELERATOR 0x04
+#define USE_DEFAULT_CL 0x08
+#define USE_ANY_CL 0x010
+
+#define USE_MPI 0x20
 
 #include "libhipeless.cpp"
 

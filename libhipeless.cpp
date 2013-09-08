@@ -42,9 +42,15 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
   errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
   checkErr(errcode, "clGetPlatformIDs");
 
+  cl_device_type chosen_type = flags & USE_CPU ? CL_DEVICE_TYPE_CPU :
+                               flags & USE_GPU ? CL_DEVICE_TYPE_GPU :
+                               flags & USE_ACCELERATOR ? CL_DEVICE_TYPE_ACCELERATOR :
+                               flags & USE_DEFAULT_CL ? CL_DEVICE_TYPE_DEFAULT :
+                               /* otherwhise */ CL_DEVICE_TYPE_ALL;
+
   for(i = 0; i < size_platforms; i++) {
     cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[i], 0};
-    *context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
+    *context = clCreateContextFromType(cps, chosen_type, NULL, NULL, &errcode);
     if(errcode == CL_SUCCESS) {
       // We found a suitable platform
       break;
