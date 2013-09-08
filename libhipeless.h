@@ -18,6 +18,8 @@
 
 #include "libhipeless.cpp"
 
+extern "C" {
+
 // C = alpha * A * B + beta * C
 // Double precission
 void blas_dgemm(cl_char transa, cl_char transb, cl_int m, cl_int  n,  cl_int  k,
@@ -47,3 +49,5 @@ void blas_strmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
                 cl_float alpha, cl_float *a, cl_int lda, cl_float *b, cl_int ldb, unsigned int flags) {
   blas_xtrmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, flags);
 }
+
+} // extern "C"
