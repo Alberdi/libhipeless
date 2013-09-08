@@ -35,13 +35,14 @@ void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
 void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_devices, cl_device_id **devices, unsigned int flags) {
   cl_int errcode;
   cl_uint size_platforms;
+  int i;
   
   errcode = clGetPlatformIDs(0, NULL, &size_platforms);
   cl_platform_id platforms[size_platforms];
   errcode |= clGetPlatformIDs(size_platforms, platforms, NULL);
   checkErr(errcode, "clGetPlatformIDs");
 
-  for(int i = 0; i < size_platforms; i++) {
+  for(i = 0; i < size_platforms; i++) {
     cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platforms[i], 0};
     *context = clCreateContextFromType(cps, flags&USE_CPU ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU, NULL, NULL, &errcode);
     if(errcode == CL_SUCCESS) {
@@ -62,7 +63,8 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
 
 void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues, cl_uint num_devices,
                      cl_device_id *devices, cl_mem *memC) {
-  for(int i=0; i < num_devices; i++) {
+  int i;
+  for(i=0; i < num_devices; i++) {
     clFinish(command_queues[i]);
     clReleaseCommandQueue(command_queues[i]);
   }
