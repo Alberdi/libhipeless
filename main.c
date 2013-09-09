@@ -3,7 +3,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 
 //#define PRINT_MATRICES 1
 
@@ -14,7 +14,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_MPI | USE_GPU;
+  unsigned int flags = USE_CPU;
   cl_int i, j, m, k, n;
   cl_int lda, ldb, ldc;
   cl_float *a, *b, *c;
@@ -23,7 +23,8 @@ int main(int argc, char* argv[]) {
   //cl_double alpha, beta;
   cl_char transa, transb;
   int rowsa, colsa, rowsb, colsb;
-  time_t t0, t1;
+  timeval t0, t1;
+  double elapsed;
 
   if(flags & USE_MPI) {
     MPI_Init(&argc, &argv);
@@ -97,7 +98,6 @@ int main(int argc, char* argv[]) {
   alpha = 1.2;
   beta = 1.5;
 
-  t0 = time(NULL);
 /*        for(i=0;i<rowsa;i++)
         {
             for(j=0;j<colsb;j++)
@@ -107,9 +107,10 @@ int main(int argc, char* argv[]) {
                     c[i*rowsa+j]+=a[i*rowsa+k]*b[k*rowsb+j];
             }
         }*/
+  gettimeofday(&t0, NULL);
   //blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
   blas_strmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
-  t1 = time(NULL);
+  gettimeofday(&t1, NULL);
 
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<rowsb; i++) {
@@ -119,7 +120,9 @@ int main(int argc, char* argv[]) {
     PM printf("\n");
   }
 
-  printf("Elapsed time %ld\n", t1-t0);
+  elapsed = (t1.tv_sec - t0.tv_sec);
+  elapsed += (t1.tv_usec - t0.tv_usec) / 1000000.0;   // usec to seconds.
+  printf("Elapsed time: %f seconds.\n", elapsed);
 
 /*  // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
