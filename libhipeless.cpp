@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include <mpi.h>
 
@@ -97,6 +98,17 @@ void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kern
   size_t size_source[] = { strlen(source) };
   *program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
   checkErr(errcode, "clCreateProgramWithSource");
+/*FILE* fp = fopen(filename, "r");
+fseek (fp , 0 , SEEK_END);
+size_t size_source[] = { ftell(fp) };
+rewind(fp);
+unsigned char* buffer;
+buffer = (unsigned char*) malloc (size_source[0]);
+printf("SIZE %i\n", size_source[0]);
+fread(buffer, 1, size_source[0], fp);
+fclose(fp);
+*program = clCreateProgramWithBinary(context, 1, devices, size_source, (const unsigned char**)&buffer, NULL, &errcode);
+checkErr(errcode, "clCreateProgramWithSource");*/
 
   errcode = clBuildProgram(*program, size_devices/sizeof(cl_device_id), devices, NULL, NULL, NULL);
   if(errcode == CL_BUILD_PROGRAM_FAILURE) {
@@ -140,13 +152,28 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   size_t global_work_size[2];
   size_t local_work_size[2] = {BLOCK_SIZE, BLOCK_SIZE};
 
+  timeval t0[2], t1[2];
+  double elapsed;
+
   // global_work_size[0] will be determined for each device on the platform,
   // because the last one might have a bit more of work to do.
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xgemm.cl", kernelfunction);
+
+  gettimeofday(&t0[0], NULL);
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "/scratch/malberdi/xgemm.cl", kernelfunction);
+  gettimeofday(&t1[0], NULL);
+  elapsed = (t1[0].tv_sec - t0[0].tv_sec);
+  elapsed += (t1[0].tv_usec - t0[0].tv_usec) / 1000000.0;   // usec to seconds.
+  printf("load_kernel %i elapsed time: %f seconds.\n", i, elapsed);
   
+/*  num_devices--;
+  size_devices /= 2;
+printf("NUM %i\n", num_devices);*/
+  cl_event kernel_events[2];
+  cl_event user_event = clCreateUserEvent(context, &errcode);
+
   dev_m = m/num_devices;
   last_dev_m = m - dev_m*(num_devices-1);
 
@@ -162,7 +189,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
     iter_m = i == num_devices-1 ? last_dev_m : dev_m;
     global_work_size[0] = iter_m + (iter_m % BLOCK_SIZE ? BLOCK_SIZE - (iter_m % BLOCK_SIZE) : 0);
 
-    command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
+    command_queues[i] = clCreateCommandQueue(context, devices[i], /*CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE |*/ CL_QUEUE_PROFILING_ENABLE, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
 
     if(nota) {
@@ -233,13 +260,30 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
     checkErr(clSetKernelArg(kernel, 8, sizeof(number), &beta), "clSetKernelArg10");
     checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memC[i]), "clSetKernelArg11");
 
-    errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
+    gettimeofday(&t0[i], NULL);
+    errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, &user_event, &kernel_events[i]);
+    checkErr(errcode, "clEnqueueNDRangeKernel");
+    errcode = clFlush(command_queues[i]);
     checkErr(errcode, "clEnqueueNDRangeKernel");
   }
+clSetUserEventStatus(user_event, CL_COMPLETE);
 
   for(i=0; i < num_devices; i++) {
     iter_m = i == num_devices-1 ? last_dev_m : dev_m;
     clFinish(command_queues[i]);
+/*cl_ulong start;
+clGetEventProfilingInfo(kernel_events[i], CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL);
+cl_ulong end;
+clGetEventProfilingInfo(kernel_events[i], CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL);
+start %= 100000000000;
+end %= 100000000000;
+printf("Event %d: start=%llu, end=%llu (total=%llu)\n", i, start, end, end-start);
+
+      gettimeofday(&t1[i], NULL);
+      elapsed = (t1[i].tv_sec - t0[i].tv_sec);
+      elapsed += (t1[i].tv_usec - t0[i].tv_usec) / 1000000.0;   // usec to seconds.
+      printf("command_queue %i elapsed time: %f seconds.\n", i, elapsed);*/
+
     if(n == ldc) {
       errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(number), &c[i*dev_m*ldc], 0, NULL, NULL);
     }
@@ -265,6 +309,8 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,
   int function;
   MPI_Comm intercomm, parent;
   MPI_Datatype transtype_a, transtype_b, transtype_c, mpi_number;
+  timeval t0, t1;
+  double elapsed;
 
   function = sizeof(number) == sizeof(cl_float) ? SGEMM : DGEMM;
   strcpy(operation, function == SGEMM ? "blas_sgemm" : "blas_dgemm");
@@ -361,7 +407,13 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,
     }
   }
   
+  gettimeofday(&t0, NULL);
   opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
+  gettimeofday(&t1, NULL);
+
+  elapsed = (t1.tv_sec - t0.tv_sec);
+  elapsed += (t1.tv_usec - t0.tv_usec) / 1000000.0;   // usec to seconds.
+  printf("opencl_operation elapsed time: %f seconds.\n", elapsed);
 
   if(flags & USE_MPI) {
     // Recv & Send C
@@ -417,7 +469,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xtrmm.cl", kernelfunction);
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "/scratch/malberdi/xtrmm.cl", kernelfunction);
   
   dev_row = row/num_devices;
   last_dev_row = row - dev_row*(num_devices-1);

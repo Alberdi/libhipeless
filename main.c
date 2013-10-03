@@ -14,7 +14,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-  unsigned int flags = USE_CPU;
+  unsigned int flags = USE_GPU;
   cl_int i, j, m, k, n;
   cl_int lda, ldb, ldc;
   cl_float *a, *b, *c;
@@ -35,9 +35,9 @@ int main(int argc, char* argv[]) {
   m = (int)(rand()%max_size)+16;
   k = (int)(rand()%max_size)+16;
   n = (int)(rand()%max_size)+16;
-  m = 1000;
-  n = 1000;
-  k = 1000;
+  m = 4096;
+  n = 4096;
+  k = 4096;
 
   transa = 'N';
   if(transa == 'N') {
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
     rowsa = k;
     colsa = m;
   }
-  lda = colsa;
+  lda = colsa;// + (rand() % 256) + 1;
 
   transb = 'N';
   if(transb == 'N') {
@@ -59,8 +59,9 @@ int main(int argc, char* argv[]) {
     rowsb = n;
     colsb = k;
   }
-  ldb = colsb;
-  ldc = n;
+  ldb = colsb;// + (rand() % 256) + 1;
+
+  ldc = n;// + (rand() % 256) + 1;
 
   a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
   b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
@@ -72,8 +73,8 @@ int main(int argc, char* argv[]) {
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
     for(j=0; j<colsa; j++) {
-      //a[i*lda+j] = (float)(rand() % 256);
-      a[i*lda+j] = j+1;
+      a[i*lda+j] = (float)(rand() % 256) + (rand() % 100)/100.0;
+      //a[i*lda+j] = j+1;
       PM printf("%.0f ", a[i*lda+j]);
     }
     PM printf("\n");
@@ -82,8 +83,8 @@ int main(int argc, char* argv[]) {
   PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<rowsb; i++) {
     for(j=0; j<colsb; j++) {
-      //b[i*ldb+j] = (float)(rand() % 256);
-      b[i*ldb+j] = i*colsb+j;
+      b[i*ldb+j] = (float)(rand() % 256) + (rand() % 100)/100.0;
+      //b[i*ldb+j] = i*colsb+j;
       PM printf("%.0f ", b[i*ldb+j]);
     }
     PM printf("\n");
@@ -91,12 +92,12 @@ int main(int argc, char* argv[]) {
 
   for(i=0; i<m; i++) {
     for(j=0; j<n ;j++) {
-      c[i*ldc+j] = 10000;
+      c[i*ldc+j] = (float)(rand() % 256) + (rand() % 100)/100.0;
     }
   }
 
-  alpha = 1.2;
-  beta = 1.5;
+  alpha = 1;
+  beta = 0;;
 
 /*        for(i=0;i<rowsa;i++)
         {
@@ -108,8 +109,8 @@ int main(int argc, char* argv[]) {
             }
         }*/
   gettimeofday(&t0, NULL);
-  //blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
-  blas_strmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
+  blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
+  //blas_strmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
   gettimeofday(&t1, NULL);
 
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
