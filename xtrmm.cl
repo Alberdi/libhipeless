@@ -37,7 +37,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
       if(unit && x == i+ty)
         As[tx][ty] = 1;
       else
-        As[tx][ty] = a[x*dim+i+ty];
+        As[tx][ty] = nota ? a[x*dim+i+ty] : a[(i+ty)*dim+x];
     }
     if(i+tx >= dim || y >= n)
       Bs[tx][ty] = 0;
@@ -88,7 +88,7 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
       if(unit && x == i+ty)
         As[tx][ty] = 1;
       else
-        As[tx][ty] = a[x*dim+i+ty];
+        As[tx][ty] = nota ? a[x*dim+i+ty] : a[(i+ty)*dim+x];
     }
     if(i+tx >= dim || y >= n)
       Bs[tx][ty] = 0;

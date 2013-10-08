@@ -452,7 +452,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     else {
       // Load full consecutive columns of a
       for(l=0; l<dim; l++) {
-        //errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(number), iter_m*sizeof(number), &a[l*lda+i*dev_m], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_row*sizeof(number), iter_row*sizeof(number), &a[l*lda+i*dev_row], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
