@@ -23,15 +23,15 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
   __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
 
   // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
-  int start = upper ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
+  int start = upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
   // On lower triangular matrices, we can skip the last blocks full of zeroes.
-  int end = upper ? dim : dim - ((row-1-x)/BLOCK_SIZE) * BLOCK_SIZE;
+  int end = upper == nota ? dim : dim - ((row-1-x)/BLOCK_SIZE) * BLOCK_SIZE;
 
   for(int i=start; i<end; i+=BLOCK_SIZE) {
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(x >= row || i+ty >= dim || (upper && i+ty < x) || (!upper && i+ty > dim-row+x))
+    if(x >= row || i+ty >= dim || (upper == nota && i+ty < x) || (!upper == nota && i+ty > dim-row+x))
       As[tx][ty] = 0;
     else {
       if(unit && x == i+ty)

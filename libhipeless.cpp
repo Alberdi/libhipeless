@@ -603,7 +603,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         }
         // Send B, we don't need to send the rows that would be multiplied by zero
         for(j = 0; j < dim; j++) {
-          if(upper) {
+          if(upper == nota) {
             // Only the last dim rows are needed
             MPI_Send(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
           }
