@@ -614,8 +614,8 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         }
       }
       // Restore dim and row values for parent operation
-      dim = upper ? (left ? m : n) : rows[0];
-      row = rows[0];
+      dim = upper == nota ? (left ? m : n) : rows[0];
+      row = nota ? rows[0] : m;
     }
     else {
       MPI_Recv(&row, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
