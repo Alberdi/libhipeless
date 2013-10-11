@@ -631,9 +631,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       a = (number *) malloc(row*dim*sizeof(number));
       b = (number *) malloc(m*n*sizeof(number));
       // Recv A
-      for(int ii=0; ii<dim; ii++)
-        for(int jj=0; jj<row; jj++)
-          a[ii*dim+jj] = 0;
       for(j = 0; j < row; j++) {
         if(nota) {
           if(upper) {
