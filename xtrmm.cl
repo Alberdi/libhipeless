@@ -31,7 +31,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(x >= row || i+ty >= dim || (upper == nota && i+ty < x) || (!upper == nota && i+ty > dim-row+x))
+    if(x >= row || i+ty >= dim || (upper == nota && i+ty < x) || (upper != nota && i+ty > dim-row+x))
       As[tx][ty] = 0;
     else {
       if(unit && x == i+ty)
