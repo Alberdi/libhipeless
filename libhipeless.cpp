@@ -620,7 +620,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     else {
       MPI_Recv(&row, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
       MPI_Recv(&dim, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
-      lda = dim;
+      lda = nota ? dim : row;
       ldb = n;
       if(left) {
         m = dim;
