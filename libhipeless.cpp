@@ -406,6 +406,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   cl_kernel kernel;
 
   int dev_row, last_dev_row, iter_row;
+  int dev_row_a, dev_row_b, iter_row_a, iter_row_b;
 
   const char *source;
   size_t size_devices;
@@ -422,16 +423,21 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   dev_row = row/num_devices;
   last_dev_row = row - dev_row*(num_devices-1);
 
-  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_row*dim*sizeof(number), NULL, &errcode);
+  dev_row_a = left ? dev_row : 0;
+  dev_row_b = left ? 0 : dev_row;
+
+  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? last_dev_row : dim)*dim*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferA");
 
-  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, dim*n*sizeof(number), NULL, &errcode);
+  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? row : last_dev_row)*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
    
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
     iter_row = i == num_devices-1 ? last_dev_row : dev_row;
+    iter_row_a = left ? iter_row : dim;
+    iter_row_b = left ? m : iter_row;
     global_work_size[0] = iter_row + (iter_row % BLOCK_SIZE ? BLOCK_SIZE - (iter_row % BLOCK_SIZE) : 0);
 
     command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
@@ -441,18 +447,18 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
       // Load full consecutive rows of a
       if(dim == lda) {
         // In this case, we can write it all in one call
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_row*dim*sizeof(number), &a[i*dev_row*dim], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_row_a*dim*sizeof(number), &a[i*dev_row_a*dim], 0, NULL, NULL);
       }
       else {
-        for(l=0; l<iter_row; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*dim*sizeof(number), dim*sizeof(number), &a[(i*dev_row+l)*lda], 0, NULL, NULL);
+        for(l=0; l<iter_row_a; l++) {
+          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*dim*sizeof(number), dim*sizeof(number), &a[(i*dev_row_a+l)*lda], 0, NULL, NULL);
         }
       }
     }
     else {
       // Load full consecutive columns of a
       for(l=0; l<dim; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_row*sizeof(number), iter_row*sizeof(number), &a[l*lda+i*dev_row], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_row_a*sizeof(number), iter_row_a*sizeof(number), &a[l*lda+i*dev_row_a], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
@@ -460,11 +466,11 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     // Load full consecutive rows of b
     if(n == ldb) {
       // In this case, we can write it all in one call
-      errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, dim*n*sizeof(number), b, 0, NULL, NULL);
+      errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, iter_row_b*n*sizeof(number), b, 0, NULL, NULL);
     }
     else {
       for(l=0; l<dim; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[l*ldb], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[(i*dev_row_b+l)*ldb], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferB");
@@ -530,7 +536,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
   nota = transa == 'N' || transa == 'n';
 
   dim = left ? m : n;
-  row = dim;
+  row = m;
 
   if(flags & USE_MPI) {
     mpi_number = function == STRMM ? MPI_FLOAT : MPI_DOUBLE;

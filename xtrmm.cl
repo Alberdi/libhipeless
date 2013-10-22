@@ -13,6 +13,11 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
   // Target index
   int x = tx + BLOCK_SIZE * get_group_id(0);
   int y = ty + BLOCK_SIZE * get_group_id(1);
+
+  int ax = x;
+  int ay = y;
+  int bx = x;
+  int by = y;
  
   // Declaration of the local memory array As 
   // used to store the sub-matrix of a
@@ -21,32 +26,44 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
   // Declaration of the local memory array Bs 
   // used to store the sub-matrix of b
   __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
-
+  
   // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
-  int start = upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
+  int start = left && upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
   // On lower triangular matrices, we can skip the last blocks full of zeroes.
-  int end = upper == nota ? dim : dim - ((row-1-x)/BLOCK_SIZE) * BLOCK_SIZE;
+  int end = !left || upper == nota ? dim : dim - ((row-1-x)/BLOCK_SIZE) * BLOCK_SIZE;
 
   for(int i=start; i<end; i+=BLOCK_SIZE) {
+    if(left) {
+      ay = i+ty;
+      bx = i+tx;
+    }
+    else {
+      ax = i+tx;
+      by = i+ty;
+    }
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(x >= row || i+ty >= dim || (upper == nota && i+ty < x) || (upper != nota && i+ty > dim-row+x))
+    if(ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
       As[tx][ty] = 0;
     else {
-      if(unit && x == i+ty)
+      if(unit && ax == ay)
         As[tx][ty] = 1;
       else
-        As[tx][ty] = nota ? a[x*dim+i+ty] : a[(i+ty)*row+x];
+        As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row+ax];
     }
-    if(i+tx >= m || y >= n)
+    if(bx >= m || by >= n)
       Bs[tx][ty] = 0;
     else
-      Bs[tx][ty] = b[(i+tx)*n+y];
+      Bs[tx][ty] = b[bx*n+by];
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    for(int l=0; l<BLOCK_SIZE; l++)
-      Csub += As[tx][l] * Bs[l][ty];
+    if(left)
+      for(int l=0; l<BLOCK_SIZE; l++)
+        Csub += As[tx][l] * Bs[l][ty];
+    else
+      for(int l=0; l<BLOCK_SIZE; l++)
+        Csub += Bs[tx][l] * As[l][ty];
   }
   if(x < row && y < n) { // In bounds
     c[x*n+y] = alpha*Csub;
@@ -101,7 +118,7 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
     for(int l=0; l<BLOCK_SIZE; l++)
       Csub += As[tx][l] * Bs[l][ty];
   }
-  if(x < row && y < n) { // In bounds
+  if(x < m && y < n) { // In bounds
     c[x*n+y] = alpha*Csub;
   }
 }
