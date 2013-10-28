@@ -420,8 +420,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
   opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xtrmm.cl", kernelfunction);
   
-  dev_row = row/num_devices;
-  last_dev_row = row - dev_row*(num_devices-1);
+  dev_row = (left ? row : m)/num_devices;
+  last_dev_row = (left ? row : m) - dev_row*(num_devices-1);
 
   dev_row_a = left ? dev_row : 0;
   dev_row_b = left ? 0 : dev_row;
@@ -545,19 +545,29 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       mpi_spawn(&intercomm, &mpi_size);
       root_argument = MPI_ROOT;
       MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
-
+        
       rows = (int *) malloc(mpi_size*sizeof(int));
-      elems = (dim*dim+dim)/mpi_size;
-      start = upper == nota ? 0 : mpi_size-1;
-      end = upper == nota ? mpi_size-1 : 0;
-      delta = upper == nota ? 1 : -1;
-      for(i = start; i != end; i += delta) {
-        // Calculate the consecutive rows to be processed by each processor.
-        // The equation is derived and explained in the documentation.
-        rows[i] = round((2*dim+1 - sqrt((2*dim+1)*(2*dim+1)-4*(elems)))/2);
-        dim -= rows[i];
+
+      if(left) {
+        elems = (dim*dim+dim)/mpi_size;
+        start = upper == nota ? 0 : mpi_size-1;
+        end = upper == nota ? mpi_size-1 : 0;
+        delta = upper == nota ? 1 : -1;
+        for(i = start; i != end; i += delta) {
+          // Calculate the consecutive rows to be processed by each processor.
+          // The equation is derived and explained in the documentation.
+          rows[i] = round((2*dim+1 - sqrt((2*dim+1)*(2*dim+1)-4*(elems)))/2);
+          dim -= rows[i];
+        }
+        rows[end] = dim;
       }
-      rows[end] = dim;
+      else {
+        // When A is on the right, we need the full matrix.
+        for(i=0; i < mpi_size; i++) {
+          rows[i] = n;
+        }
+        spawns_m = m/mpi_size;
+      }
     }
     else {
       intercomm = parent;
@@ -567,7 +577,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
 
   if(flags & USE_MPI) {
     // Broadcast common parameters
-    MPI_Bcast(&m, 1, MPI_INTEGER, root_argument, intercomm);
+    MPI_Bcast(left ? &m : &spawns_m, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&n, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&alpha, 1, mpi_number, root_argument, intercomm);
     MPI_Bcast(&flags, 1, MPI_UNSIGNED, root_argument, intercomm);
@@ -586,7 +596,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     if(parent == MPI_COMM_NULL) {
       row = 0;
       for(i = 0; i < mpi_size-1; i++) {
-        row += rows[i];
+        row += left ? rows[i] : 0;
         dim = upper == nota ? (left ? m-row : n-row) : row+rows[i+1];
         MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
@@ -607,15 +617,23 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
             MPI_Send(&a[start], 1 , transtype_a, i, XTRMM_TAG_DATA, intercomm);
           }
         }
-        // Send B, we don't need to send the rows that would be multiplied by zero
-        for(j = 0; j < dim; j++) {
-          if(upper == nota) {
-            // Only the last dim rows are needed
-            MPI_Send(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+        if(left) {
+          // Send B, we don't need to send the rows that would be multiplied by zero
+          for(j = 0; j < dim; j++) {
+            if(upper == nota) {
+              // Only the last dim rows are needed
+              MPI_Send(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+            }
+            else {
+              // Only the first dim rows are needed
+              MPI_Send(&b[j*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+            }
           }
-          else {
-            // Only the first dim rows are needed
-            MPI_Send(&b[j*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
+        }
+        else { // If not left
+          m = m - spawns_m*(mpi_size-1);
+          for(j = 0; j < spawns_m; j++) {
+            MPI_Send(&b[(j+i*spawns_m+m)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
           }
         }
       }
@@ -632,6 +650,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         m = dim;
       }
       else {
+        m = spawns_m;
         n = dim;
       }
       a = (number *) malloc(row*dim*sizeof(number));
@@ -654,12 +673,13 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
         }
       }
       // Recv B
-      for(j = 0; j < dim; j++) {
+      end = left ? dim : m;
+      for(j = 0; j < end; j++) {
         MPI_Recv(&b[j*ldb], n, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
       }
     }
   }
-  
+
   opencl_xtrmm(left, upper, nota, unit, row, dim, m, n, alpha, a, lda, b, ldb, flags, operation);
 
   if(flags & USE_MPI) {
@@ -668,16 +688,28 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       // Recv B
       // We recover the chunks in order because otherwise we wouldn't know where to place them
       for(i = 0; i < mpi_size-1; i++) {
-        row += rows[i];
-        dim = upper ? m-row : row;
-        for(j = 0; j < rows[i+1]; j++) {
+        if(left) {
+          row += rows[i];
+          end = rows[i+1];
+        }
+        else {
+          // If i == 0 more rows could have been processed by the master
+          if(i == 0) {
+            row = m;
+            end = spawns_m;
+          }
+          else {
+            row += spawns_m; 
+          }
+        }
+        for(j = 0; j < end; j++) {
           MPI_Recv(&b[(row+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
         }
       }
     }
     else {
       // Send B
-      for(j = 0; j < row; j++) {
+      for(j = 0; j < m; j++) {
         MPI_Send(&b[j*ldb], n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
       }
       free(a);
@@ -685,4 +717,3 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     }
   }
 }
-
