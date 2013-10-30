@@ -483,9 +483,9 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(clSetKernelArg(kernel, 1, sizeof(cl_int), &upper), "clSetKernelArg1");
     checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &nota), "clSetKernelArg2");
     checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), &unit), "clSetKernelArg3");
-    checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &row), "clSetKernelArg4");
+    checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), left ? &iter_row : &row), "clSetKernelArg4");
     checkErr(clSetKernelArg(kernel, 5, sizeof(cl_int), &dim), "clSetKernelArg5");
-    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_int), &m), "clSetKernelArg6");
+    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_int), left ? &m : &iter_row), "clSetKernelArg6");
     checkErr(clSetKernelArg(kernel, 7, sizeof(cl_int), &n), "clSetKernelArg7");
     checkErr(clSetKernelArg(kernel, 8, sizeof(number), &alpha), "clSetKernelArg8");
     checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memA), "clSetKernelArg9");
