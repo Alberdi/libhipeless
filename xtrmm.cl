@@ -46,12 +46,11 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
     barrier(CLK_LOCAL_MEM_FENCE);
     if(ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
       As[tx][ty] = 0;
-    else {
+    else
       if(unit && ax == ay)
         As[tx][ty] = 1;
       else
         As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row+ax];
-    }
 
     if(bx >= m || by >= n)
       Bs[tx][ty] = 0;
@@ -66,9 +65,9 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
       for(int l=0; l<BLOCK_SIZE; l++)
         Csub += Bs[tx][l] * As[l][ty];
   }
-  if(y < n && x < (left ? row : m)) { // In bounds
+
+  if(y < n && x < (left ? row : m)) // In bounds
     c[x*n+y] = alpha*Csub;
-  }
 }
 
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
