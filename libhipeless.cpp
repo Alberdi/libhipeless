@@ -631,6 +631,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
           }
         }
         else { // If not left
+          m = m - spawns_m*(mpi_size-1);
           for(j = 0; j < spawns_m; j++) {
             MPI_Send(&b[(j+i*spawns_m+m)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
           }
@@ -639,9 +640,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       // Restore values for parent operation
       dim = upper == nota ? (left ? m : n) : rows[0];
       row = rows[0];
-      if(!left) {
-        m = m - spawns_m*(mpi_size-1);
-      }
     }
     else {
       MPI_Recv(&row, 1, MPI_INTEGER, 0, XTRMM_TAG_DIM, intercomm, MPI_STATUS_IGNORE);
