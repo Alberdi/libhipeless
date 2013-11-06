@@ -120,8 +120,8 @@ void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kern
 }
 
 template <typename number>
-int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number alpha, number *a, cl_int lda,
-                     number *b, cl_int ldb, number beta, number *c, cl_int ldc, unsigned int flags) {
+int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number alpha, number *a, cl_int lda,
+                 number *b, cl_int ldb, number beta, number *c, cl_int ldc, unsigned int flags) {
   int i, l;
   cl_uint num_devices;
   cl_int errcode;
@@ -359,7 +359,7 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,
     }
   }
   
-  opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
+  opencl_xgemm(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
 
   if(flags & USE_MPI) {
     // Recv & Send C
