@@ -377,17 +377,6 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,
   }
 }
 
-// B = alpha*op(A)*B, or B = alpha*B*op(A)
-template <typename number>
-void dummy_xtrmm(cl_int m, cl_int n, number *a, number *b, cl_int ldb, cl_int rank) {
-  int i, j;
-  for(i = 0; i < m; i++) {
-    for(j = 0; j < n; j++) {
-      b[i*ldb + j] = i;
-    }
-  }
-}
-
 template <typename number>
 void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int row, cl_int dim, cl_int m,
                   cl_int n, number alpha, number *a, cl_int lda, number *b, cl_int ldb, unsigned int flags) {
