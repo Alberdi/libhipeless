@@ -10,7 +10,6 @@
 #define DTRMM 4
 
 #define BLOCK_SIZE 16
-#define OPERATION_SIZE 11
 
 #define USE_CPU 0x01
 #define USE_GPU 0x02

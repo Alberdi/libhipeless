@@ -121,7 +121,7 @@ void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kern
 
 template <typename number>
 int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number alpha, number *a, cl_int lda,
-                     number *b, cl_int ldb, number beta, number *c, cl_int ldc, unsigned int flags, const char* kernelfunction) {
+                     number *b, cl_int ldb, number beta, number *c, cl_int ldc, unsigned int flags) {
   int i, l;
   cl_uint num_devices;
   cl_int errcode;
@@ -145,7 +145,7 @@ int opencl_operation(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, num
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xgemm.cl", kernelfunction);
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xgemm.cl", sizeof(number) == sizeof(cl_float) ? "blas_sgemm" : "blas_dgemm");
   
   dev_m = m/num_devices;
   last_dev_m = m - dev_m*(num_devices-1);
@@ -261,13 +261,11 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,
                 number beta, number *c, cl_int ldc, unsigned int flags) {
 
   int root_argument, mpi_size, spawns_m, nota, notb;
-  char operation[OPERATION_SIZE];
   int function;
   MPI_Comm intercomm, parent;
   MPI_Datatype transtype_a, transtype_b, transtype_c, mpi_number;
 
   function = sizeof(number) == sizeof(cl_float) ? SGEMM : DGEMM;
-  strcpy(operation, function == SGEMM ? "blas_sgemm" : "blas_dgemm");
 
   nota = transa == 'N' || transa == 'n';
   notb = transb == 'N' || transb == 'n';
@@ -361,7 +359,7 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,
     }
   }
   
-  opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags, operation);
+  opencl_operation(nota, notb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
 
   if(flags & USE_MPI) {
     // Recv & Send C
@@ -392,8 +390,7 @@ void dummy_xtrmm(cl_int m, cl_int n, number *a, number *b, cl_int ldb, cl_int ra
 
 template <typename number>
 void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int row, cl_int dim, cl_int m,
-                  cl_int n, number alpha, number *a, cl_int lda, number *b, cl_int ldb, unsigned int flags,
-                  const char* kernelfunction) {
+                  cl_int n, number alpha, number *a, cl_int lda, number *b, cl_int ldb, unsigned int flags) {
   int i, l;
   cl_uint num_devices;
   cl_int errcode;
@@ -418,7 +415,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xtrmm.cl", kernelfunction);
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xtrmm.cl", sizeof(number) == sizeof(cl_float) ? "blas_strmm" : "blas_dtrmm");
   
   dev_row = (left ? row : m)/num_devices;
   last_dev_row = (left ? row : m) - dev_row*(num_devices-1);
@@ -522,13 +519,11 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
   int root_argument, mpi_size, spawns_m, left, upper, unit, nota, dim, i, j, elems, row;
   int start, end, delta;
   int *rows;
-  char operation[OPERATION_SIZE];
   int function;
   MPI_Comm intercomm, parent;
   MPI_Datatype mpi_number, transtype_a;
 
   function = sizeof(number) == sizeof(cl_float) ? STRMM : DTRMM;
-  strcpy(operation, function == STRMM ? "blas_strmm" : "blas_dtrmm");
 
   left = side == 'L' || side == 'l';
   upper = uplo == 'U' || uplo == 'u';
@@ -680,7 +675,7 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
     }
   }
 
-  opencl_xtrmm(left, upper, nota, unit, row, dim, m, n, alpha, a, lda, b, ldb, flags, operation);
+  opencl_xtrmm(left, upper, nota, unit, row, dim, m, n, alpha, a, lda, b, ldb, flags);
 
   if(flags & USE_MPI) {
     if(parent == MPI_COMM_NULL) {
