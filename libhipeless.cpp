@@ -256,7 +256,7 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
 
 // C = alpha*op(A)*op(B) + beta*C
 template <typename number>
-void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,number alpha, number *a,
+int blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k, number alpha, number *a,
                 cl_int lda, number *b, cl_int ldb, number beta, number *c, cl_int ldc, unsigned int flags) {
   int root_argument, mpi_size, spawns_m, nota, notb;
   int function;
@@ -267,6 +267,33 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,num
 
   nota = transa == 'N' || transa == 'n';
   notb = transb == 'N' || transb == 'n';
+  
+  if(flags & !MPI_SPAWN) {
+    // Parameter checking
+    if(m < 0) {
+      return HIPELESS_INVALID_VALUE_M;
+    }
+    if(n < 0) {
+      return HIPELESS_INVALID_VALUE_N;
+    }
+    if(k < 0) {
+      return HIPELESS_INVALID_VALUE_K;
+    }
+    if((nota && lda < (k > 1 ? k : 1)) || (!nota && lda < (m > 1 ? m : 1))) {
+      return HIPELESS_INVALID_VALUE_LDA;
+    }
+    if((notb && ldb < n) || (!notb && ldb < k) || ldb < 1) {
+      return HIPELESS_INVALID_VALUE_LDB;
+    }
+    if(ldc < (n > 1 ? n : 1)) {
+      return HIPELESS_INVALID_VALUE_LDC;
+    }
+
+    // Quick return
+    if((m == 0) || (n == 0) || ((alpha == 0 || k == 0) && beta == 1)) {
+      return HIPELESS_SUCCESS;
+    }
+  }
 
   if(flags & USE_MPI) {
     mpi_number = function == SGEMM ? MPI_FLOAT : MPI_DOUBLE;
@@ -373,6 +400,8 @@ void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,num
       free(c);
     }
   }
+
+  return HIPELESS_SUCCESS;
 }
 
 template <typename number>
@@ -500,7 +529,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
 
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
 template <typename number>
-void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int m, cl_int n,
+int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int m, cl_int n,
                 number alpha, number *a, cl_int lda, number *b, cl_int ldb, unsigned int flags) {
   int root_argument, mpi_size, spawns_m, left, upper, unit, nota, dim, i, j, elems, row;
   int start, end, delta;
@@ -515,6 +544,27 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
   upper = uplo == 'U' || uplo == 'u';
   unit = diag == 'U' || diag == 'u' ? 1 : 0;
   nota = transa == 'N' || transa == 'n';
+
+  if(flags & !MPI_SPAWN) {
+    // Parameter checking
+    if(m < 0) {
+      return HIPELESS_INVALID_VALUE_M;
+    }
+    if(n < 0) {
+      return HIPELESS_INVALID_VALUE_N;
+    }
+    if((left && lda < (m > 1 ? m : 1)) || (!left && lda < (n > 1 ? n : 1))) {
+      return HIPELESS_INVALID_VALUE_LDA;
+    }
+    if(ldb < (n > 1 ? n : 1)) {
+      return HIPELESS_INVALID_VALUE_LDB;
+    }
+  
+    // Quick return
+    if(m == 0 || n == 0) {
+      return HIPELESS_SUCCESS;
+    }
+  }
 
   dim = left ? m : n;
   row = m;
@@ -698,4 +748,6 @@ void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int
       free(b);
     }
   }
+
+  return HIPELESS_SUCCESS;
 }
