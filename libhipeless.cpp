@@ -67,8 +67,8 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
   checkErr(errcode, "clGetContextInfo3");
 }
 
-void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues, cl_uint num_devices,
-                     cl_device_id *devices, cl_mem *memC) {
+void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues,
+                     cl_uint num_devices, cl_device_id *devices, cl_mem *memC) {
   int i;
   for(i=0; i < num_devices; i++) {
     clFinish(command_queues[i]);
@@ -84,8 +84,8 @@ void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, c
   free(memC);
 }
 
-void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kernel, cl_device_id* devices, size_t size_devices,
-                        const char *filename, const char *kernelfunction) {
+void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kernel, cl_device_id* devices,
+                        size_t size_devices, const char *filename, const char *kernelfunction) {
   cl_int errcode;
 
   // Load the filen into source
@@ -256,10 +256,8 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
 
 // C = alpha*op(A)*op(B) + beta*C
 template <typename number>
-void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,
-                number alpha, number *a, cl_int lda, number *b, cl_int ldb,
-                number beta, number *c, cl_int ldc, unsigned int flags) {
-
+void blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k,number alpha, number *a,
+                cl_int lda, number *b, cl_int ldb, number beta, number *c, cl_int ldc, unsigned int flags) {
   int root_argument, mpi_size, spawns_m, nota, notb;
   int function;
   MPI_Comm intercomm, parent;
@@ -502,9 +500,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
 
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
 template <typename number>
-void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int m,
-                cl_int n, number alpha, number *a, cl_int lda, number *b, cl_int ldb,
-                unsigned int flags) {
+void blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int m, cl_int n,
+                number alpha, number *a, cl_int lda, number *b, cl_int ldb, unsigned int flags) {
   int root_argument, mpi_size, spawns_m, left, upper, unit, nota, dim, i, j, elems, row;
   int start, end, delta;
   int *rows;
