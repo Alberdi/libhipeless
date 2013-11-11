@@ -17,6 +17,17 @@ inline void checkErr(cl_int errcode, const char* name) {
   }
 }
 
+template <typename number>
+inline void multiply_matrix(number* a, int m, int n, int lda, number beta) {
+  // This is such a simple and corner case that we won't distribute it.
+  int i, j;
+  for(i = 0; i < m; i++) {
+    for(j = 0; j < n; j++) {
+      a[i*lda+j] = beta * a[i*lda+j];
+    }
+  }
+}
+
 void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
   char* universe_size = getenv("HIPELESS_UNIVERSE_SIZE");
   if(universe_size == NULL) {
@@ -289,8 +300,12 @@ int blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k, num
       return HIPELESS_INVALID_VALUE_LDC;
     }
 
-    // Quick return
+    // Quick returns
     if((m == 0) || (n == 0) || ((alpha == 0 || k == 0) && beta == 1)) {
+      return HIPELESS_SUCCESS;
+    }
+    if(alpha == 0 || k == 0) {
+      multiply_matrix(c, m, n, ldc, beta);
       return HIPELESS_SUCCESS;
     }
   }
@@ -560,8 +575,12 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
       return HIPELESS_INVALID_VALUE_LDB;
     }
   
-    // Quick return
+    // Quick returns
     if(m == 0 || n == 0) {
+      return HIPELESS_SUCCESS;
+    }
+    if(alpha == 0) {
+      multiply_matrix(b, m, n, ldb, alpha);
       return HIPELESS_SUCCESS;
     }
   }
