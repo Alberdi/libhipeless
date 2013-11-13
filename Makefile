@@ -1,6 +1,6 @@
 FLAGS = -O3 -l OpenCL
 
-all: main mpihelper tests
+all: main mpihelper tester
 
 main: main.c libhipeless.h
 	mpic++ -o main main.c libhipeless.h $(FLAGS)
@@ -11,9 +11,9 @@ mpihelper: mpihelper.cpp libhipeless.h
 test: test.cpp
 	g++ -o test test.cpp $(FLAGS)
 
-tests: tests.c
-	mpic++ -o tests tests.c libhipeless.h $(FLAGS)
+tester: tester.c
+	mpic++ -o tester tester.c libhipeless.h $(FLAGS)
 
 clean:
-	rm main mpihelper test
+	rm main mpihelper test tester
 
