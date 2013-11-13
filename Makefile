@@ -11,8 +11,8 @@ mpihelper: mpihelper.cpp libhipeless.h
 test: test.cpp
 	g++ -o test test.cpp $(FLAGS)
 
-tests: tests_xgemm.c
-	mpic++ -o tests_xgemm tests_xgemm.c libhipeless.h $(FLAGS)
+tests: tests.c
+	mpic++ -o tests tests.c libhipeless.h $(FLAGS)
 
 clean:
 	rm main mpihelper test
