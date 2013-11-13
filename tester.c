@@ -7,6 +7,11 @@ int equal_matrices(int rows, int cols, float* a, int lda, float* b, int ldb) {
   int i, j;
   float x, y;
 
+  if(lda < cols || ldb < cols) {
+    // Wrong parameters, return false
+    return 0;
+  }
+
   for(i = 0; i < rows; i++) {
     for(j = 0; j < cols; j++) {
       x = a[i*lda+j];
@@ -51,6 +56,7 @@ void load_file(const char* filename, float** a, float** b, float** c) {
 static const char* test_tester() {
   float *a, *b;
   load_file("tests/xgemm_ones.txt", &a, &b, NULL);
+
   // A = B = ones(32, 32);
   mu_assert("Error in test_tester(0).", equal_matrices(32, 32, a, 32, b, 32));
 
@@ -61,6 +67,10 @@ static const char* test_tester() {
   a[15] = 2;
   // A != B
   mu_assert("Error in test_tester(2).", !equal_matrices(32, 32, a, 32, b, 32));
+
+  // Wrong parameters, should be false
+  mu_assert("Error in test_tester(3).", !equal_matrices(32, 34, a, 32, b, 32));
+  mu_assert("Error in test_tester(4).", !equal_matrices(32, 32, a, 32, b, 30));
 
   free(a);
   free(b);
