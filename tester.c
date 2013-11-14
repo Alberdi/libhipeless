@@ -16,7 +16,7 @@ int equal_matrices(int rows, int cols, float* a, int lda, float* b, int ldb) {
     for(j = 0; j < cols; j++) {
       x = a[i*lda+j];
       y = b[i*ldb+j];
-      if(x+y != 0 && abs(x-y/((x+y)/2)) > 0.0001) {
+      if(x+y != 0 && fabsf((x-y)/((x+y)/2)) > 0.0001) {
         return 0;
       }
     }
