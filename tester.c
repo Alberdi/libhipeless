@@ -77,8 +77,39 @@ static const char* test_tester() {
   return 0;
 }
 
+static const char* test_sgemm_ones() {
+  float *a, *b, *c, *d;
+  load_file("tests/xgemm_ones.txt", &a, &b, &c);
+
+  d = (float*) malloc(32*32*sizeof(float));
+  
+  // D == C
+  blas_sgemm('N', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  mu_assert("Error in test_sgemm_ones(0).", equal_matrices(32, 32, d, 32, c, 32));
+
+  // D == C when op(A) == A', (A is symmetric).
+  blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  mu_assert("Error in test_sgemm_ones(1).", equal_matrices(32, 32, d, 32, c, 32));
+
+  // D == C when op(A) == A', (A is symmetric).
+  blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  mu_assert("Error in test_sgemm_ones(2).", equal_matrices(32, 32, d, 32, c, 32));
+
+  // D == C when op(B) == B' (B is symmetric).
+  blas_sgemm('N', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  mu_assert("Error in test_sgemm_ones(2).", equal_matrices(32, 32, d, 32, c, 32));
+  
+  // D == C when op(B) == B', op(A) == A' (A, B are symmetric).
+  blas_sgemm('T', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  mu_assert("Error in test_sgemm_ones(2).", equal_matrices(32, 32, d, 32, c, 32));
+
+  free(a); free(b); free(c); free(d);
+  return 0;
+}
+
 static const char* all_tests() {
   mu_run_test(test_tester);
+  mu_run_test(test_sgemm_ones);
   return 0;
 }
 
