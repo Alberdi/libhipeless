@@ -137,6 +137,20 @@ static const char* test_sgemm_rand(int flags) {
   return 0;
 }
 
+static const char* test_sgemm_row(int flags) {
+  float *a, *b, *c, *d;
+  load_file("tests/xgemm_row.txt", &a, &b, &c);
+
+  d = (float*) malloc(1*1*sizeof(float));
+
+  // D == C
+  blas_sgemm('N', 'N', 1, 1, 128, 1, a, 128, b, 1, 0, d, 1, flags);
+  mu_assert("Error in test_sgemm_row(0).", equal_matrices(1, 1, d, 1, c, 1));
+
+  free(a); free(b); free(c); free(d);
+  return 0;
+}
+
 static const char* all_tests() {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -146,6 +160,7 @@ static const char* all_tests() {
     mu_run_test(test_tester, flags[i]);
     mu_run_test(test_sgemm_ones, flags[i]);
     mu_run_test(test_sgemm_rand, flags[i]);
+    mu_run_test(test_sgemm_row, flags[i]);
   }
   return 0;
 }
