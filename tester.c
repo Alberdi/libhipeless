@@ -37,7 +37,7 @@ void load_matrix(FILE* f, float** a) {
   
   for(i = 0; i < rows; i++) {
     for(j = 0; j < cols; j++) {
-      fscanf(f, "%f ", &(*a)[i*rows+j]);
+      fscanf(f, "%f ", &(*a)[i*cols+j]);
     }
   }
 }
