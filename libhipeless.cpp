@@ -314,17 +314,19 @@ int blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k, num
   }
 
   if(flags & USE_MPI) {
+    MPI_Comm_get_parent(&parent);
     mpi_size = read_mpi_size();
-    spawns_m = m/mpi_size;
-    if(spawns_m == 0) {
-      // If the spawns won't do any work, we won't create them
-      flags &= ~USE_MPI;
+    if(parent == MPI_COMM_NULL) {
+      spawns_m = m/mpi_size;
+      if(spawns_m == 0) {
+        // If the spawns won't do any work, we won't create them
+        flags &= ~USE_MPI;
+      }
     }
   }
 
   if(flags & USE_MPI) {
     mpi_number = function == SGEMM ? MPI_FLOAT : MPI_DOUBLE;
-    MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
       mpi_spawn(&intercomm, mpi_size);
       root_argument = MPI_ROOT;
