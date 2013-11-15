@@ -28,7 +28,7 @@ inline void multiply_matrix(number* a, int m, int n, int lda, number beta) {
   }
 }
 
-void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
+int read_mpi_size() {
   char* universe_size = getenv("HIPELESS_UNIVERSE_SIZE");
   if(universe_size == NULL) {
     universe_size = getenv("MPI_UNIVERSE_SIZE");
@@ -37,9 +37,12 @@ void mpi_spawn(MPI_Comm *intercomm, int *mpi_size) {
       exit(EXIT_FAILURE);
     }
   }
-  *mpi_size = atoi(universe_size);
+  return atoi(universe_size);
+}
+
+void mpi_spawn(MPI_Comm *intercomm, int mpi_size) {
   char* mpi_helper = (char *) "mpihelper";
-  MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, *mpi_size-1, MPI_INFO_NULL, 0,
+  MPI_Comm_spawn(mpi_helper, MPI_ARGV_NULL, mpi_size-1, MPI_INFO_NULL, 0,
                  MPI_COMM_SELF, intercomm, MPI_ERRCODES_IGNORE);
 }
 
@@ -311,12 +314,20 @@ int blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k, num
   }
 
   if(flags & USE_MPI) {
+    mpi_size = read_mpi_size();
+    spawns_m = m/mpi_size;
+    if(spawns_m == 0) {
+      // If the spawns won't do any work, we won't create them
+      flags &= ~USE_MPI;
+    }
+  }
+
+  if(flags & USE_MPI) {
     mpi_number = function == SGEMM ? MPI_FLOAT : MPI_DOUBLE;
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
-      mpi_spawn(&intercomm, &mpi_size);
+      mpi_spawn(&intercomm, mpi_size);
       root_argument = MPI_ROOT;
-      spawns_m = m/mpi_size;
 
       MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
 
@@ -592,7 +603,8 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
     mpi_number = function == STRMM ? MPI_FLOAT : MPI_DOUBLE;
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
-      mpi_spawn(&intercomm, &mpi_size);
+      mpi_size = read_mpi_size();
+      mpi_spawn(&intercomm, mpi_size);
       root_argument = MPI_ROOT;
       MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
         
