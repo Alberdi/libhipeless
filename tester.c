@@ -107,6 +107,36 @@ static const char* test_sgemm_ones(int flags) {
   return 0;
 }
 
+static const char* test_sgemm_rand(int flags) {
+  float *a, *b, *c, *d;
+  load_file("tests/xgemm_rand.txt", &a, &b, &c);
+
+  d = (float*) malloc(32*32*sizeof(float));
+
+  // D == C
+  blas_sgemm('N', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
+  mu_assert("Error in test_sgemm_ones(0).", equal_matrices(32, 32, d, 32, c, 32));
+
+  // D != C when op(A) == A', (A is not symmetric).
+  blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
+  mu_assert("Error in test_sgemm_rand(1).", !equal_matrices(32, 32, d, 32, c, 32));
+
+  // D != C when op(A) == A', (A is not symmetric).
+  blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
+  mu_assert("Error in test_sgemm_rand(2).", !equal_matrices(32, 32, d, 32, c, 32));
+
+  // D != C when op(B) == B' (B is not symmetric).
+  blas_sgemm('N', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
+  mu_assert("Error in test_sgemm_rand(3).", !equal_matrices(32, 32, d, 32, c, 32));
+  
+  // D != C when op(B) == B', op(A) == A' (A, B are not symmetric).
+  blas_sgemm('T', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
+  mu_assert("Error in test_sgemm_rand(4).", !equal_matrices(32, 32, d, 32, c, 32));
+
+  free(a); free(b); free(c); free(d);
+  return 0;
+}
+
 static const char* all_tests() {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -115,6 +145,7 @@ static const char* all_tests() {
     printf("Using flags = %i.\n", flags[i]);
     mu_run_test(test_tester, flags[i]);
     mu_run_test(test_sgemm_ones, flags[i]);
+    mu_run_test(test_sgemm_rand, flags[i]);
   }
   return 0;
 }
