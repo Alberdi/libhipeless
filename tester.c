@@ -53,7 +53,7 @@ void load_file(const char* filename, float** a, float** b, float** c) {
   fclose(f);
 }
 
-static const char* test_tester() {
+static const char* test_tester(int flags) {
   float *a, *b;
   load_file("tests/xgemm_ones.txt", &a, &b, NULL);
 
@@ -77,30 +77,30 @@ static const char* test_tester() {
   return 0;
 }
 
-static const char* test_sgemm_ones() {
+static const char* test_sgemm_ones(int flags) {
   float *a, *b, *c, *d;
   load_file("tests/xgemm_ones.txt", &a, &b, &c);
 
   d = (float*) malloc(32*32*sizeof(float));
   
   // D == C
-  blas_sgemm('N', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  blas_sgemm('N', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
   mu_assert("Error in test_sgemm_ones(0).", equal_matrices(32, 32, d, 32, c, 32));
 
   // D == C when op(A) == A', (A is symmetric).
-  blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
   mu_assert("Error in test_sgemm_ones(1).", equal_matrices(32, 32, d, 32, c, 32));
 
   // D == C when op(A) == A', (A is symmetric).
-  blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
   mu_assert("Error in test_sgemm_ones(2).", equal_matrices(32, 32, d, 32, c, 32));
 
   // D == C when op(B) == B' (B is symmetric).
-  blas_sgemm('N', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  blas_sgemm('N', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
   mu_assert("Error in test_sgemm_ones(3).", equal_matrices(32, 32, d, 32, c, 32));
   
   // D == C when op(B) == B', op(A) == A' (A, B are symmetric).
-  blas_sgemm('T', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, USE_CPU);
+  blas_sgemm('T', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
   mu_assert("Error in test_sgemm_ones(4).", equal_matrices(32, 32, d, 32, c, 32));
 
   free(a); free(b); free(c); free(d);
@@ -108,12 +108,19 @@ static const char* test_sgemm_ones() {
 }
 
 static const char* all_tests() {
-  mu_run_test(test_tester);
-  mu_run_test(test_sgemm_ones);
+  int i;
+  int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
+  for(i = 0; i < 4; i++) {
+    tests_run = 0;
+    printf("Using flags = %i.\n", flags[i]);
+    mu_run_test(test_tester, flags[i]);
+    mu_run_test(test_sgemm_ones, flags[i]);
+  }
   return 0;
 }
 
 int main(int argc, char* argv[]) {
+  MPI_Init(&argc, &argv);
   const char* result = all_tests();
   if(result != 0) {
     printf("%s\n", result);
@@ -122,5 +129,6 @@ int main(int argc, char* argv[]) {
     printf("ALL TESTS PASSED\n");
   }
 
+  MPI_Finalize();
   return result != 0;
 }
