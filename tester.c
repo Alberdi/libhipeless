@@ -154,10 +154,13 @@ static const char* test_sgemm_row(int flags) {
 static const char* all_tests() {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
+
+  mu_run_test(test_tester, flags[0]);
+  printf("Tester ok.\n");
+
   for(i = 0; i < 4; i++) {
     tests_run = 0;
     printf("Using flags = 0x%x.\n", flags[i]);
-    mu_run_test(test_tester, flags[i]);
     mu_run_test(test_sgemm_ones, flags[i]);
     mu_run_test(test_sgemm_rand, flags[i]);
     mu_run_test(test_sgemm_row, flags[i]);
