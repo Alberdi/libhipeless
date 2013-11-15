@@ -142,7 +142,7 @@ static const char* all_tests() {
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
   for(i = 0; i < 4; i++) {
     tests_run = 0;
-    printf("Using flags = %i.\n", flags[i]);
+    printf("Using flags = 0x%x.\n", flags[i]);
     mu_run_test(test_tester, flags[i]);
     mu_run_test(test_sgemm_ones, flags[i]);
     mu_run_test(test_sgemm_rand, flags[i]);
