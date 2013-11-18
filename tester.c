@@ -115,7 +115,7 @@ static const char* test_sgemm_rand(int flags) {
 
   // D == C
   blas_sgemm('N', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
-  mu_assert("Error in test_sgemm_ones(0).", equal_matrices(32, 32, d, 32, c, 32));
+  mu_assert("Error in test_sgemm_rand(0).", equal_matrices(32, 32, d, 32, c, 32));
 
   // D != C when op(A) == A', (A is not symmetric).
   blas_sgemm('T', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
@@ -132,6 +132,21 @@ static const char* test_sgemm_rand(int flags) {
   // D != C when op(B) == B', op(A) == A' (A, B are not symmetric).
   blas_sgemm('T', 'T', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
   mu_assert("Error in test_sgemm_rand(4).", !equal_matrices(32, 32, d, 32, c, 32));
+
+  free(a); free(b); free(c); free(d);
+  return 0;
+}
+
+static const char* test_sgemm_rand_big(int flags) {
+  float *a, *b, *c, *d;
+  // A = 331x137; B = 137x401; C = 331x401;
+  load_file("tests/xgemm_rand_big.txt", &a, &b, &c);
+
+  d = (float*) malloc(331*405*sizeof(float));
+
+  // D == C
+  blas_sgemm('N', 'N', 331, 401, 137, 1, a, 137, b, 401, 0, d, 405, flags);
+  mu_assert("Error in test_sgemm_rand_big(0).", equal_matrices(331, 401, d, 405, c, 401));
 
   free(a); free(b); free(c); free(d);
   return 0;
@@ -200,6 +215,7 @@ static const char* all_tests() {
     printf("Using flags = 0x%x.\n", flags[i]);
     mu_run_test(test_sgemm_ones, flags[i]);
     mu_run_test(test_sgemm_rand, flags[i]);
+    mu_run_test(test_sgemm_rand_big, flags[i]);
     mu_run_test(test_sgemm_row, flags[i]);
     mu_run_test(test_sgemm_row_trans, flags[i]);
   }
