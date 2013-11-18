@@ -163,6 +163,31 @@ static const char* test_sgemm_row(int flags) {
   return 0;
 }
 
+static const char* test_sgemm_row_trans(int flags) {
+  float *a, *b, *c, *d;
+  load_file("tests/xgemm_row_trans.txt", &a, &b, &c);
+
+  d = (float*) malloc(128*128*sizeof(float));
+
+  // D == C
+  blas_sgemm('T', 'T', 128, 128, 1, 1, a, 128, b, 1, 0, d, 128, flags);
+  mu_assert("Error in test_sgemm_row_trans(0).", equal_matrices(128, 128, d, 128, c, 128));
+
+  // D[0:3] == C[0:3]
+  blas_sgemm('T', 'T', 4, 4, 1, 1, a, 128, b, 1, 0, d, 128, flags);
+  mu_assert("Error in test_sgemm_row_trans(1).", equal_matrices(4, 4, d, 128, c, 128));
+
+  // Let's be sure we're not overflowing d when calculating a fraction.
+  free(d);
+  d = (float*) malloc(35*35*sizeof(float));
+  // D == C (35 rows, 35 columns).
+  blas_sgemm('T', 'T', 35, 35, 1, 1, a, 128, b, 1, 0, d, 35, flags);
+  mu_assert("Error in test_sgemm_row_trans(2).", equal_matrices(35, 35, d, 35, c, 128));
+
+  free(a); free(b); free(c); free(d);
+  return 0;
+}
+
 static const char* all_tests() {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -176,6 +201,7 @@ static const char* all_tests() {
     mu_run_test(test_sgemm_ones, flags[i]);
     mu_run_test(test_sgemm_rand, flags[i]);
     mu_run_test(test_sgemm_row, flags[i]);
+    mu_run_test(test_sgemm_row_trans, flags[i]);
   }
   return 0;
 }
