@@ -148,6 +148,14 @@ static const char* test_sgemm_rand_big(int flags) {
   blas_sgemm('N', 'N', 331, 401, 137, 1, a, 137, b, 401, 0, d, 405, flags);
   mu_assert("Error in test_sgemm_rand_big(0).", equal_matrices(331, 401, d, 405, c, 401));
 
+  // D == C (first 15 rows)
+  blas_sgemm('N', 'N', 15, 401, 137, 1, a, 137, b, 401, 0, d, 405, flags);
+  mu_assert("Error in test_sgemm_rand_big(1).", equal_matrices(15, 401, d, 405, c, 401));
+
+  // D != C (first 15 rows, using 15 columns of C)
+  blas_sgemm('N', 'N', 4, 4, 137, 1, a, 137, b, 401, 0, d, 405, flags);
+  mu_assert("Error in test_sgemm_rand_big(2).", equal_matrices(15, 15, d, 405, c, 401));
+
   free(a); free(b); free(c); free(d);
   return 0;
 }
