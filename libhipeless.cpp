@@ -82,9 +82,14 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
 }
 
 void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues,
-                     cl_uint num_devices, cl_device_id *devices, cl_mem *memC) {
+                     cl_uint num_devices, cl_device_id *devices, cl_mem memA, cl_mem memB, cl_mem *memC) {
   int i;
+
+  clReleaseMemObject(memA);
+  clReleaseMemObject(memB);
+
   for(i=0; i < num_devices; i++) {
+    clReleaseMemObject(memC[i]);
     clFinish(command_queues[i]);
     clReleaseCommandQueue(command_queues[i]);
   }
@@ -270,7 +275,7 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  opencl_finalize(context, program, kernel, command_queues, num_devices, devices, memC);
+  opencl_finalize(context, program, kernel, command_queues, num_devices, devices, memA, memB, memC);
 }
 
 // C = alpha*op(A)*op(B) + beta*C
@@ -562,7 +567,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(errcode, "clEnqueueReadBuffer");
   }
 
-  opencl_finalize(context, program, kernel, command_queues, num_devices, devices, memC);
+  opencl_finalize(context, program, kernel, command_queues, num_devices, devices, memA, memB, memC);
 }
 
 // B = alpha*op(A)*B, or B = alpha*B*op(A)
