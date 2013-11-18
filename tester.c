@@ -162,17 +162,29 @@ static const char* test_sgemm_row(int flags) {
   blas_sgemm('N', 'N', 1, 1, 128, 1, a, 128, b, 1, 0, d, 1, flags);
   mu_assert("Error in test_sgemm_row(0).", equal_matrices(1, 1, d, 1, c, 1));
 
+  // D == 12.34*C (alpha = 12.34)
+  blas_sgemm('N', 'N', 1, 1, 128, 12.34, a, 128, b, 1, 0, d, 1, flags);
+  d[0] /= 12.34;
+  mu_assert("Error in test_sgemm_row(1).", equal_matrices(1, 1, d, 1, c, 1));
+
   // We'll store in D the calculation of the first 4 multiplications.
   blas_sgemm('N', 'N', 1, 1, 4, 1, a, 128, b, 1, 0, d, 1, flags);
   // And now we replicate it in C.
   c[0] = a[0]*b[0] + a[1]*b[1] + a[2]*b[2] + a[3]*b[3];
-  mu_assert("Error in test_sgemm_row(1).", equal_matrices(1, 1, d, 1, c, 1));
+  mu_assert("Error in test_sgemm_row(2).", equal_matrices(1, 1, d, 1, c, 1));
 
   // Now, we'll use pointers to calculate the following 4 multiplications.
   blas_sgemm('N', 'N', 1, 1, 4, 1, &a[4], 124, &b[4], 1, 0, d, 1, flags);
   // And now we replicate it in C.
   c[0] = a[4]*b[4] + a[5]*b[5] + a[6]*b[6] + a[7]*b[7];
-  mu_assert("Error in test_sgemm_row(2).", equal_matrices(1, 1, d, 1, c, 1));
+  mu_assert("Error in test_sgemm_row(3).", equal_matrices(1, 1, d, 1, c, 1));
+
+  // Do the same with alpha = 1.2 and beta = 2.3
+  blas_sgemm('N', 'N', 1, 1, 4, 1.2, &a[4], 124, &b[4], 1, 2.3, d, 1, flags);
+  // And now we replicate it in C.
+  // C = 1.2*C + 2.3*C = 3.5*C
+  c[0] = 3.5*c[0];
+  mu_assert("Error in test_sgemm_row(4).", equal_matrices(1, 1, d, 1, c, 1));
 
   free(a); free(b); free(c); free(d);
   return 0;
