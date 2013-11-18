@@ -164,6 +164,11 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
   dev_m = m/num_devices;
   last_dev_m = m - dev_m*(num_devices-1);
 
+  if(dev_m == 0) {
+    // We can't use the extra devices
+    num_devices = 1;
+  }
+
   memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_m*k*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferA");
 
@@ -463,6 +468,11 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   
   dev_row = (left ? row : m)/num_devices;
   last_dev_row = (left ? row : m) - dev_row*(num_devices-1);
+
+  if(dev_row == 0) {
+    // We can't use the extra devices
+    num_devices = 1;
+  }
 
   dev_row_a = left ? dev_row : 0;
   dev_row_b = left ? 0 : dev_row;
