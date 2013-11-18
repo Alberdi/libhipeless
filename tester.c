@@ -152,6 +152,28 @@ static const char* test_sgemm_rand_big(int flags) {
   return 0;
 }
 
+static const char* test_sgemm_rand_big_alphabeta(int flags) {
+  float *a, *b, *c, *d;
+  int i, j;
+  // A = 331x137; B = 137x401; C = 331x401;
+  // alpha = 12.345; C = alpha*A*B-210;
+  load_file("tests/xgemm_rand_big_alphabeta.txt", &a, &b, &c);
+
+  d = (float*) malloc(331*401*sizeof(float));
+  for(i = 0; i < 331; i++) {
+    for(j = 0; j < 401; j++) {
+      d[i*401+j] = 100;
+    }
+  }
+
+  // D == C (beta = -2)
+  blas_sgemm('N', 'N', 331, 401, 137, 12.345, a, 137, b, 401, -2.1, d, 401, flags);
+  mu_assert("Error in test_sgemm_rand_big_alphabeta(0).", equal_matrices(331, 401, d, 401, c, 401));
+
+  free(a); free(b); free(c); free(d);
+  return 0;
+}
+
 static const char* test_sgemm_row(int flags) {
   float *a, *b, *c, *d;
   load_file("tests/xgemm_row.txt", &a, &b, &c);
@@ -228,6 +250,7 @@ static const char* all_tests() {
     mu_run_test(test_sgemm_ones, flags[i]);
     mu_run_test(test_sgemm_rand, flags[i]);
     mu_run_test(test_sgemm_rand_big, flags[i]);
+    mu_run_test(test_sgemm_rand_big_alphabeta, flags[i]);
     mu_run_test(test_sgemm_row, flags[i]);
     mu_run_test(test_sgemm_row_trans, flags[i]);
   }
