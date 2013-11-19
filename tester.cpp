@@ -3,9 +3,10 @@
 
 int tests_run = 0;
 
-int equal_matrices(int rows, int cols, float* a, int lda, float* b, int ldb) {
+template <typename number>
+int equal_matrices(int rows, int cols, number* a, int lda, number* b, int ldb) {
   int i, j;
-  float x, y;
+  number x, y;
 
   if(lda < cols || ldb < cols) {
     // Wrong parameters, return false
@@ -24,7 +25,8 @@ int equal_matrices(int rows, int cols, float* a, int lda, float* b, int ldb) {
   return 1;
 }
 
-void load_matrix(FILE* f, float** a) {
+template <typename number>
+void load_matrix(FILE* f, number** a) {
   int rows, cols;
   int i, j;
 
@@ -33,7 +35,7 @@ void load_matrix(FILE* f, float** a) {
   fscanf(f, "# rows: %i\n", &rows);
   fscanf(f, "# columns: %i\n", &cols);
 
-  *a = (float*) malloc(rows*cols*sizeof(float));
+  *a = (number*) malloc(rows*cols*sizeof(number));
   
   for(i = 0; i < rows; i++) {
     for(j = 0; j < cols; j++) {
@@ -42,7 +44,8 @@ void load_matrix(FILE* f, float** a) {
   }
 }
 
-void load_file(const char* filename, float** a, float** b, float** c) {
+template <typename number>
+void load_file(const char* filename, number** a, number** b, number** c) {
   FILE* f;
   f = fopen(filename, "r");
   load_matrix(f, a);
@@ -53,9 +56,11 @@ void load_file(const char* filename, float** a, float** b, float** c) {
   fclose(f);
 }
 
-static const char* test_tester(int flags) {
-  float *a, *b;
-  load_file("tests/xgemm_ones.txt", &a, &b, NULL);
+template <typename number>
+static const char* test_tester(int flags, number t) {
+  number *a, *b, *c;
+  c = NULL;
+  load_file("tests/xgemm_ones.txt", &a, &b, &c);
 
   // A = B = ones(32, 32);
   mu_assert("Error in test_tester(0).", equal_matrices(32, 32, a, 32, b, 32));
@@ -77,11 +82,12 @@ static const char* test_tester(int flags) {
   return 0;
 }
 
-static const char* test_sgemm_ones(int flags) {
-  float *a, *b, *c, *d;
+template <typename number>
+static const char* test_sgemm_ones(int flags, number t) {
+  number *a, *b, *c, *d;
   load_file("tests/xgemm_ones.txt", &a, &b, &c);
 
-  d = (float*) malloc(32*32*sizeof(float));
+  d = (number*) malloc(32*32*sizeof(number));
   
   // D == C
   blas_sgemm('N', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
@@ -107,11 +113,12 @@ static const char* test_sgemm_ones(int flags) {
   return 0;
 }
 
-static const char* test_sgemm_rand(int flags) {
-  float *a, *b, *c, *d;
+template <typename number>
+static const char* test_sgemm_rand(int flags, number t) {
+  number *a, *b, *c, *d;
   load_file("tests/xgemm_rand.txt", &a, &b, &c);
 
-  d = (float*) malloc(32*32*sizeof(float));
+  d = (number*) malloc(32*32*sizeof(number));
 
   // D == C
   blas_sgemm('N', 'N', 32, 32, 32, 1, a, 32, b, 32, 0, d, 32, flags);
@@ -137,12 +144,13 @@ static const char* test_sgemm_rand(int flags) {
   return 0;
 }
 
-static const char* test_sgemm_rand_big(int flags) {
-  float *a, *b, *c, *d;
+template <typename number>
+static const char* test_sgemm_rand_big(int flags, number t) {
+  number *a, *b, *c, *d;
   // A = 331x137; B = 137x401; C = 331x401;
   load_file("tests/xgemm_rand_big.txt", &a, &b, &c);
 
-  d = (float*) malloc(331*405*sizeof(float));
+  d = (number*) malloc(331*405*sizeof(number));
 
   // D == C
   blas_sgemm('N', 'N', 331, 401, 137, 1, a, 137, b, 401, 0, d, 405, flags);
@@ -160,14 +168,15 @@ static const char* test_sgemm_rand_big(int flags) {
   return 0;
 }
 
-static const char* test_sgemm_rand_big_alphabeta(int flags) {
-  float *a, *b, *c, *d;
+template <typename number>
+static const char* test_sgemm_rand_big_alphabeta(int flags, number t) {
+  number *a, *b, *c, *d;
   int i, j;
   // A = 331x137; B = 137x401; C = 331x401;
   // alpha = 12.345; C = alpha*A*B-210;
   load_file("tests/xgemm_rand_big_alphabeta.txt", &a, &b, &c);
 
-  d = (float*) malloc(331*401*sizeof(float));
+  d = (number*) malloc(331*401*sizeof(number));
   for(i = 0; i < 331; i++) {
     for(j = 0; j < 401; j++) {
       d[i*401+j] = 100;
@@ -182,11 +191,12 @@ static const char* test_sgemm_rand_big_alphabeta(int flags) {
   return 0;
 }
 
-static const char* test_sgemm_row(int flags) {
-  float *a, *b, *c, *d;
+template <typename number>
+static const char* test_sgemm_row(int flags, number t) {
+  number *a, *b, *c, *d;
   load_file("tests/xgemm_row.txt", &a, &b, &c);
 
-  d = (float*) malloc(1*1*sizeof(float));
+  d = (number*) malloc(1*1*sizeof(number));
 
   // D == C
   blas_sgemm('N', 'N', 1, 1, 128, 1, a, 128, b, 1, 0, d, 1, flags);
@@ -220,11 +230,12 @@ static const char* test_sgemm_row(int flags) {
   return 0;
 }
 
-static const char* test_sgemm_row_trans(int flags) {
-  float *a, *b, *c, *d;
+template <typename number>
+static const char* test_sgemm_row_trans(int flags, number t) {
+  number *a, *b, *c, *d;
   load_file("tests/xgemm_row_trans.txt", &a, &b, &c);
 
-  d = (float*) malloc(128*128*sizeof(float));
+  d = (number*) malloc(128*128*sizeof(number));
 
   // D == C
   blas_sgemm('T', 'T', 128, 128, 1, 1, a, 128, b, 1, 0, d, 128, flags);
@@ -236,7 +247,7 @@ static const char* test_sgemm_row_trans(int flags) {
 
   // Let's be sure we're not overflowing d when calculating a fraction.
   free(d);
-  d = (float*) malloc(35*35*sizeof(float));
+  d = (number*) malloc(35*35*sizeof(number));
   // D == C (35 rows, 35 columns).
   blas_sgemm('T', 'T', 35, 35, 1, 1, a, 128, b, 1, 0, d, 35, flags);
   mu_assert("Error in test_sgemm_row_trans(2).", equal_matrices(35, 35, d, 35, c, 128));
@@ -245,29 +256,30 @@ static const char* test_sgemm_row_trans(int flags) {
   return 0;
 }
 
-static const char* all_tests() {
+template <typename number>
+static const char* all_tests(number t) {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
 
-  mu_run_test(test_tester, flags[0]);
+  mu_run_test(test_tester, flags[0], t);
   printf("Tester ok.\n");
 
   for(i = 0; i < 4; i++) {
     tests_run = 0;
-    printf("Using flags = 0x%x.\n", flags[i]);
-    mu_run_test(test_sgemm_ones, flags[i]);
-    mu_run_test(test_sgemm_rand, flags[i]);
-    mu_run_test(test_sgemm_rand_big, flags[i]);
-    mu_run_test(test_sgemm_rand_big_alphabeta, flags[i]);
-    mu_run_test(test_sgemm_row, flags[i]);
-    mu_run_test(test_sgemm_row_trans, flags[i]);
+    printf("Using flags = 0x%x.\n", flags[i], t);
+    mu_run_test(test_sgemm_ones, flags[i], t);
+    mu_run_test(test_sgemm_rand, flags[i], t);
+    mu_run_test(test_sgemm_rand_big, flags[i], t);
+    mu_run_test(test_sgemm_rand_big_alphabeta, flags[i], t);
+    mu_run_test(test_sgemm_row, flags[i], t);
+    mu_run_test(test_sgemm_row_trans, flags[i], t);
   }
   return 0;
 }
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
-  const char* result = all_tests();
+  const char* result = all_tests(1.f);
   if(result != 0) {
     printf("%s\n", result);
   }
