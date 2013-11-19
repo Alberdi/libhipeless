@@ -17,7 +17,7 @@ int equal_matrices(int rows, int cols, number* a, int lda, number* b, int ldb) {
     for(j = 0; j < cols; j++) {
       x = a[i*lda+j];
       y = b[i*ldb+j];
-      if(x+y != 0 && fabsf((x-y)/((x+y)/2)) > 0.0001) {
+      if(x+y != 0 && fabs((x-y)/((x+y)/2)) > 0.0001) {
         return 0;
       }
     }
@@ -39,7 +39,7 @@ void load_matrix(FILE* f, number** a) {
   
   for(i = 0; i < rows; i++) {
     for(j = 0; j < cols; j++) {
-      fscanf(f, "%f ", &(*a)[i*cols+j]);
+      fscanf(f, sizeof(number) == sizeof(float) ? "%f " : "%lf ", &(*a)[i*cols+j]);
     }
   }
 }
@@ -277,9 +277,21 @@ static const char* all_tests(number t) {
   return 0;
 }
 
+static const char* all_tests() {
+  const char* result;
+  printf("\nTESTING SGEMM\n");
+  result = all_tests((float) 1);
+  if(result != 0) {
+    return result;
+  }
+  printf("\nTESTING DGEMM\n");
+  result = all_tests((double) 1);
+  return result;
+}
+
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
-  const char* result = all_tests(1.f);
+  const char* result = all_tests();
   if(result != 0) {
     printf("%s\n", result);
   }
