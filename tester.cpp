@@ -279,7 +279,7 @@ static const char* all_tests(number t) {
 
 static const char* all_tests() {
   const char* result;
-  printf("\nTESTING SGEMM\n");
+  printf("TESTING SGEMM\n");
   result = all_tests((float) 1);
   if(result != 0) {
     return result;
@@ -298,7 +298,6 @@ int main(int argc, char* argv[]) {
   else {
     printf("ALL TESTS PASSED\n");
   }
-
   MPI_Finalize();
   return result != 0;
 }
