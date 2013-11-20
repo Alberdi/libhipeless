@@ -257,10 +257,25 @@ static const char* test_xgemm_row_trans(int flags, number t) {
 }
 
 template <typename number>
+static const char* test_xtrmm_ones_llnn(int flags, number t) {
+  // Left, lower, not transposed, not unit
+  number *a, *b, *c;
+  load_file("tests/xtrmm_ones_llnn.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'L', 'N', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  mu_assert("Error in test_xtrmm_ones_llnn(0).", equal_matrices(32, 32, b, 32, c, 32));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
 static const char* all_tests(number t) {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
 
+  tests_run = 0;
   mu_run_test(test_tester, flags[0], t);
   printf("Tester ok.\n");
 
@@ -273,18 +288,19 @@ static const char* all_tests(number t) {
     mu_run_test(test_xgemm_rand_big_alphabeta, flags[i], t);
     mu_run_test(test_xgemm_row, flags[i], t);
     mu_run_test(test_xgemm_row_trans, flags[i], t);
+    mu_run_test(test_xtrmm_ones_llnn, flags[i], t);
   }
   return 0;
 }
 
 static const char* all_tests() {
   const char* result;
-  printf("TESTING SGEMM\n");
+  printf("TESTING FLOATS\n");
   result = all_tests((float) 1);
   if(result != 0) {
     return result;
   }
-  printf("\nTESTING DGEMM\n");
+  printf("\nTESTING DOUBLES\n");
   result = all_tests((double) 1);
   return result;
 }
