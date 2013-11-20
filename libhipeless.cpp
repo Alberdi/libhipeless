@@ -485,15 +485,20 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   memA = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? last_dev_row : dim)*dim*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferA");
 
-  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? m : last_dev_row)*n*sizeof(number), NULL, &errcode);
+  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? dim : last_dev_row)*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
-   
+
+  if(num_devices > 1 && left && !upper) {
+    // Right part is full of zeros
+    dim = dim - last_dev_row - dev_row_a*(num_devices-2);
+  }
+
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
     iter_row = i == num_devices-1 ? last_dev_row : dev_row;
     iter_row_a = left ? iter_row : dim;
-    iter_row_b = left ? m : iter_row;
+    iter_row_b = left ? dim : iter_row;
     global_work_size[0] = iter_row + (iter_row % BLOCK_SIZE ? BLOCK_SIZE - (iter_row % BLOCK_SIZE) : 0);
 
     command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
@@ -507,7 +512,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
       }
       else {
         for(l=0; l<iter_row_a; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*dim*sizeof(number), dim*sizeof(number), &a[(i*dev_row_a+l)*lda], 0, NULL, NULL);
+          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*dim*sizeof(number), dim*sizeof(number), &a[(i*dev_row_a+l)*lda+i*dev_row_a], 0, NULL, NULL);
         }
       }
     }
@@ -550,6 +555,11 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
 
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");
+
+    if(num_devices > 1 && left && !upper) {
+      // Increment the non-zero part of A for the following devices
+      dim += dev_row_a;
+    }
   }
 
   for(i=0; i < num_devices; i++) {
