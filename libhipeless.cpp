@@ -557,7 +557,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");
 
-    if(num_devices > 1 && left && !upper) {
+    if(i != num_devices-1 && left && !upper) {
       // Increment the non-zero part of A for the following devices
       dim += nota ? dev_row_a : -dev_row_a;
     }
