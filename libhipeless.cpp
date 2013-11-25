@@ -480,7 +480,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   }
 
   dev_row_a = left ? dev_row : 0;
-  dev_row_b = left ? 0 : dev_row;
+  dev_row_b = left && nota ? 0 : dev_row;
 
   memA = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? last_dev_row : dim)*dim*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferA");
@@ -488,7 +488,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? dim : last_dev_row)*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
 
-  if(num_devices > 1 && left && !upper) {
+  if(num_devices > 1 && left && !upper && nota) {
     // Right part is full of zeros
     dim = dim - last_dev_row - dev_row_a*(num_devices-2);
   }
@@ -519,7 +519,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     else {
       // Load full consecutive columns of a
       for(l=0; l<dim; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_row_a*sizeof(number), iter_row_a*sizeof(number), &a[l*lda+i*dev_row_a], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_row_a*sizeof(number),
+                                       iter_row_a*sizeof(number), &a[(l+i*dev_row_a)*lda+i*dev_row_a], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
@@ -527,7 +528,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     // Load full consecutive rows of b
     if(n == ldb) {
       // In this case, we can write it all in one call
-      errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, iter_row_b*n*sizeof(number), b, 0, NULL, NULL);
+      errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, iter_row_b*n*sizeof(number), &b[i*dev_row_b*ldb], 0, NULL, NULL);
     }
     else {
       for(l=0; l<iter_row_b; l++) {
@@ -558,7 +559,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
 
     if(num_devices > 1 && left && !upper) {
       // Increment the non-zero part of A for the following devices
-      dim += dev_row_a;
+      dim += nota ? dev_row_a : -dev_row_a;
     }
   }
 
