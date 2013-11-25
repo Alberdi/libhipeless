@@ -480,7 +480,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   }
 
   dev_row_a = left ? dev_row : 0;
-  dev_row_b = left && nota ? 0 : dev_row;
+  dev_row_b = left && (upper != nota) ? 0 : dev_row;
 
   memA = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? last_dev_row : dim)*dim*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferA");
@@ -488,8 +488,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   memB = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? dim : last_dev_row)*n*sizeof(number), NULL, &errcode);
   checkErr(errcode, "clCreateBufferB");
 
-  if(num_devices > 1 && left && !upper && nota) {
-    // Right part is full of zeros
+  if(num_devices > 1 && left && (upper != nota)) {
+    // Right (if lower) or bottom (if upper) part is full of zeros
     dim = dim - last_dev_row - dev_row_a*(num_devices-2);
   }
 
@@ -519,8 +519,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     else {
       // Load full consecutive columns of a
       for(l=0; l<dim; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_row_a*sizeof(number),
-                                       iter_row_a*sizeof(number), &a[(l+i*dev_row_a)*lda+i*dev_row_a], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_row_a*sizeof(number), iter_row_a*sizeof(number),
+                                       &a[(l+(upper ? 0 : i*dev_row_a))*lda+i*dev_row_a], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
@@ -557,9 +557,9 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");
 
-    if(i != num_devices-1 && left && !upper) {
-      // Increment the non-zero part of A for the following devices
-      dim += nota ? dev_row_a : -dev_row_a;
+    if(i != num_devices-1 && left) {
+      // Change the non-zero part of A for the following devices
+      dim += nota == upper ? -dev_row_a : dev_row_a;
     }
   }
 
