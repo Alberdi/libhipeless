@@ -258,7 +258,7 @@ static const char* test_xgemm_row_trans(int flags, number t) {
 
 template <typename number>
 static const char* test_xtrmm_ones_llnx(int flags, number t) {
-  // Left, lower, not transposed, not unit
+  // Left, lower, not transposed
   number *a, *b, *c;
   load_file("tests/xtrmm_ones_llnx.txt", &a, &b, &c);
 
@@ -276,6 +276,25 @@ static const char* test_xtrmm_ones_llnx(int flags, number t) {
   return 0;
 }
 
+template <typename number>
+static const char* test_xtrmm_ones_lltx(int flags, number t) {
+  // Left, lower, transposed
+  number *a, *b, *c;
+  load_file("tests/xtrmm_ones_lltx.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'L', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  mu_assert("Error in test_xtrmm_ones_lltx(0).", equal_matrices(32, 32, b, 32, c, 32));
+
+  load_file("tests/xtrmm_ones_lltx.txt", &a, &b, &c);
+
+  // B == C (when diagonal of A is treated as ones)
+  blas_xtrmm('L', 'L', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  mu_assert("Error in test_xtrmm_ones_lltx(1).", equal_matrices(32, 32, b, 32, c, 32));
+
+  free(a); free(b); free(c);
+  return 0;
+}
 template <typename number>
 static const char* all_tests(number t) {
   int i;
@@ -295,6 +314,7 @@ static const char* all_tests(number t) {
     mu_run_test(test_xgemm_row, flags[i], t);
     mu_run_test(test_xgemm_row_trans, flags[i], t);
     mu_run_test(test_xtrmm_ones_llnx, flags[i], t);
+    mu_run_test(test_xtrmm_ones_lltx, flags[i], t);
   }
   return 0;
 }
