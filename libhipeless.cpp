@@ -704,7 +704,7 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
           else { // TRANSA = 'T'
             MPI_Type_vector(upper ? row+1+j-unit : dim-j-unit, 1, lda, mpi_number, &transtype_a);
             MPI_Type_commit(&transtype_a);
-            start = upper ? row+j : row+j+lda*(row+j);
+            start = upper ? row+j : row+j+lda*(row+j+unit);
             MPI_Send(&a[start], 1 , transtype_a, i, XTRMM_TAG_DATA, intercomm);
           }
         }
@@ -758,7 +758,7 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
         else { // TRANSA = 'T'
           MPI_Type_vector(upper ? dim-row+1+j-unit : dim-j-unit , 1, lda, mpi_number, &transtype_a);
           MPI_Type_commit(&transtype_a);
-          start = upper ? j : j+lda*j;
+          start = upper ? j : j+lda*(j+unit);
           MPI_Recv(&a[start], 1, transtype_a, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
         }
       }
