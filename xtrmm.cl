@@ -117,7 +117,7 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
     if(ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
       As[tx][ty] = 0;
     else
-      if(unit && ax == ay)
+      if(unit && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row+ax)))
         As[tx][ty] = 1;
       else
         As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row+ax];
