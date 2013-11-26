@@ -499,7 +499,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     iter_row = i == num_devices-1 ? last_dev_row : dev_row;
     if(i > 0 && left) {
       // Change the non-zero part of A for the following devices
-      dim += nota == upper ? -iter_row : iter_row;
+      dim += nota == upper ? -dev_row : iter_row;
     }
     iter_row_a = left ? iter_row : dim;
     iter_row_b = left ? dim : iter_row;
@@ -561,7 +561,6 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
 
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");
-
   }
 
   for(i=0; i < num_devices; i++) {
