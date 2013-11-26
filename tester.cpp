@@ -436,6 +436,20 @@ static const char* test_xtrmm_rand_llnn(int flags, number t) {
 }
 
 template <typename number>
+static const char* test_xtrmm_rand_lltn(int flags, number t) {
+  // C = 24x31
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_lltn.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'L', 'T', 'N', 24, 31, (number)1, a, 24, b, 31, flags);
+  mu_assert("Error in test_xtrmm_rand_lltn(0).", equal_matrices(24, 31, b, 31, c, 31));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
 static const char* all_tests(number t) {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -464,6 +478,7 @@ static const char* all_tests(number t) {
     mu_run_test(test_xtrmm_ones_rutx, flags[i], t);
 
     mu_run_test(test_xtrmm_rand_llnn, flags[i], t);
+    mu_run_test(test_xtrmm_rand_lltn, flags[i], t);
   }
   return 0;
 }
