@@ -18,6 +18,7 @@ int equal_matrices(int rows, int cols, number* a, int lda, number* b, int ldb) {
       x = a[i*lda+j];
       y = b[i*ldb+j];
       if(x+y != 0 && fabs((x-y)/((x+y)/2)) > 0.0001) {
+        //printf("Discrepancy in %i, %i: %lf - %lf\n", i, j, x, y);
         return 0;
       }
     }
@@ -269,7 +270,7 @@ static const char* test_xtrmm_ones_llnx(int flags, number t) {
   load_file("tests/xtrmm_ones_llnx.txt", &a, &b, &c);
 
   // B == C (when diagonal of A is treated as ones)
-  blas_xtrmm('L', 'L', 'N', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  blas_xtrmm('L', 'L', 'N', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_llnx(1).", equal_matrices(32, 32, b, 32, c, 32));
 
   free(a); free(b); free(c);
@@ -289,7 +290,7 @@ static const char* test_xtrmm_ones_lltx(int flags, number t) {
   load_file("tests/xtrmm_ones_lltx.txt", &a, &b, &c);
 
   // B == C (when diagonal of A is treated as ones)
-  blas_xtrmm('L', 'L', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  blas_xtrmm('L', 'L', 'T', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_lltx(1).", equal_matrices(32, 32, b, 32, c, 32));
 
   free(a); free(b); free(c);
@@ -310,7 +311,7 @@ static const char* test_xtrmm_ones_lunx(int flags, number t) {
   load_file("tests/xtrmm_ones_lltx.txt", &a, &b, &c);
 
   // B == C (when diagonal of A is treated as ones)
-  blas_xtrmm('L', 'U', 'N', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  blas_xtrmm('L', 'U', 'N', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_lunx(1).", equal_matrices(32, 32, b, 32, c, 32));
 
   free(a); free(b); free(c);
@@ -331,7 +332,7 @@ static const char* test_xtrmm_ones_lutx(int flags, number t) {
   load_file("tests/xtrmm_ones_llnx.txt", &a, &b, &c);
 
   // B == C (when diagonal of A is treated as ones)
-  blas_xtrmm('L', 'U', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  blas_xtrmm('L', 'U', 'T', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_lutx(1).", equal_matrices(32, 32, b, 32, c, 32));
 
   free(a); free(b); free(c);
