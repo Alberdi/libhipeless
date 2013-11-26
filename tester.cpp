@@ -320,7 +320,7 @@ static const char* test_xtrmm_ones_lunx(int flags, number t) {
 
 template <typename number>
 static const char* test_xtrmm_ones_lutx(int flags, number t) {
-  // Left, upper, not transposed
+  // Left, upper, transposed
   number *a, *b, *c;
   // The result is the same as llnx
   load_file("tests/xtrmm_ones_llnx.txt", &a, &b, &c);
@@ -381,7 +381,7 @@ static const char* test_xtrmm_ones_rltx(int flags, number t) {
 
 template <typename number>
 static const char* test_xtrmm_ones_runx(int flags, number t) {
-  // Right, upper, transposed
+  // Right, upper, non transposed
   number *a, *b, *c;
   // The result is the same as rltx
   load_file("tests/xtrmm_ones_rltx.txt", &a, &b, &c);
