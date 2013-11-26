@@ -497,6 +497,10 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
     iter_row = i == num_devices-1 ? last_dev_row : dev_row;
+    if(i > 0 && left) {
+      // Change the non-zero part of A for the following devices
+      dim += nota == upper ? -iter_row : iter_row;
+    }
     iter_row_a = left ? iter_row : dim;
     iter_row_b = left ? dim : iter_row;
     global_work_size[0] = iter_row + (iter_row % BLOCK_SIZE ? BLOCK_SIZE - (iter_row % BLOCK_SIZE) : 0);
@@ -512,7 +516,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
       }
       else {
         for(l=0; l<iter_row_a; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*dim*sizeof(number), dim*sizeof(number), &a[(i*dev_row_a+l)*lda+i*dev_row_a], 0, NULL, NULL);
+          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*dim*sizeof(number), dim*sizeof(number),
+                                         &a[(i*dev_row_a+l)*lda+upper*i*dev_row_a], 0, NULL, NULL);
         }
       }
     }
@@ -557,10 +562,6 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");
 
-    if(i != num_devices-1 && left) {
-      // Change the non-zero part of A for the following devices
-      dim += nota == upper ? -dev_row_a : dev_row_a;
-    }
   }
 
   for(i=0; i < num_devices; i++) {
@@ -594,10 +595,10 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
 
   function = sizeof(number) == sizeof(cl_float) ? STRMM : DTRMM;
 
-  left = side == 'L' || side == 'l';
-  upper = uplo == 'U' || uplo == 'u';
+  left = side == 'L' || side == 'l' ? 1 : 0;
+  upper = uplo == 'U' || uplo == 'u' ? 1 : 0;
   unit = diag == 'U' || diag == 'u' ? 1 : 0;
-  nota = transa == 'N' || transa == 'n';
+  nota = transa == 'N' || transa == 'n' ? 1 : 0;
 
   if(flags & !MPI_SPAWN) {
     // Parameter checking
