@@ -340,6 +340,47 @@ static const char* test_xtrmm_ones_lutx(int flags, number t) {
 }
 
 template <typename number>
+static const char* test_xtrmm_ones_rlnx(int flags, number t) {
+  // Right, lower, not transposed
+  number *a, *b, *c;
+  load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('R', 'L', 'N', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  mu_assert("Error in test_xtrmm_ones_rlnx(0).", equal_matrices(32, 32, b, 32, c, 32));
+
+  load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, &c);
+
+  // B == C (when diagonal of A is treated as ones)
+  blas_xtrmm('R', 'L', 'N', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
+  mu_assert("Error in test_xtrmm_ones_rlnx(1).", equal_matrices(32, 32, b, 32, c, 32));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
+static const char* test_xtrmm_ones_rutx(int flags, number t) {
+  // Right, upper, transposed
+  number *a, *b, *c;
+  // The result is the same as rlnx
+  load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('R', 'U', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
+  mu_assert("Error in test_xtrmm_ones_rutx(0).", equal_matrices(32, 32, b, 32, c, 32));
+
+  load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, &c);
+
+  // B == C (when diagonal of A is treated as ones)
+  blas_xtrmm('R', 'U', 'T', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
+  mu_assert("Error in test_xtrmm_ones_rutx(1).", equal_matrices(32, 32, b, 32, c, 32));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
 static const char* all_tests(number t) {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -362,6 +403,8 @@ static const char* all_tests(number t) {
     mu_run_test(test_xtrmm_ones_lltx, flags[i], t);
     mu_run_test(test_xtrmm_ones_lunx, flags[i], t);
     mu_run_test(test_xtrmm_ones_lutx, flags[i], t);
+    mu_run_test(test_xtrmm_ones_rlnx, flags[i], t);
+    mu_run_test(test_xtrmm_ones_rutx, flags[i], t);
   }
   return 0;
 }
