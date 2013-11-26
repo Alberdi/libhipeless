@@ -436,6 +436,20 @@ static const char* test_xtrmm_rand_llnn(int flags, number t) {
 }
 
 template <typename number>
+static const char* test_xtrmm_rand_llnu(int flags, number t) {
+  // C = 13x7
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_llnu.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'L', 'N', 'U', 13, 7, (number)1, a, 13, b, 7, flags);
+  mu_assert("Error in test_xtrmm_rand_llnu(0).", equal_matrices(13, 7, b, 7, c, 7));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
 static const char* test_xtrmm_rand_lltn(int flags, number t) {
   // C = 24x31
   number *a, *b, *c;
@@ -444,6 +458,20 @@ static const char* test_xtrmm_rand_lltn(int flags, number t) {
   // B == C
   blas_xtrmm('L', 'L', 'T', 'N', 24, 31, (number)1, a, 24, b, 31, flags);
   mu_assert("Error in test_xtrmm_rand_lltn(0).", equal_matrices(24, 31, b, 31, c, 31));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
+static const char* test_xtrmm_rand_lltu(int flags, number t) {
+  // C = 40x20
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_lltu.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'L', 'T', 'U', 40, 20, (number)1, a, 40, b, 20, flags);
+  mu_assert("Error in test_xtrmm_rand_lltu(0).", equal_matrices(40, 20, b, 20, c, 20));
 
   free(a); free(b); free(c);
   return 0;
@@ -478,7 +506,9 @@ static const char* all_tests(number t) {
     mu_run_test(test_xtrmm_ones_rutx, flags[i], t);
 
     mu_run_test(test_xtrmm_rand_llnn, flags[i], t);
+    mu_run_test(test_xtrmm_rand_llnu, flags[i], t);
     mu_run_test(test_xtrmm_rand_lltn, flags[i], t);
+    mu_run_test(test_xtrmm_rand_lltu, flags[i], t);
   }
   return 0;
 }
