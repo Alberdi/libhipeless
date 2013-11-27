@@ -44,10 +44,11 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
+    if(left && (ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
+       || !left && (ax >= dim || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > ax)))
       As[tx][ty] = 0;
     else
-      if(unit && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row+ax)))
+      if(unit && ((left && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row+ax))) || (!left && ax == ay)))
         As[tx][ty] = 1;
       else
         As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row+ax];
@@ -114,10 +115,11 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
+    if(left && (ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
+       || !left && (ax >= dim || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > ax)))
       As[tx][ty] = 0;
     else
-      if(unit && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row+ax)))
+      if(unit && ((left && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row+ax))) || (!left && ax == ay)))
         As[tx][ty] = 1;
       else
         As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row+ax];
