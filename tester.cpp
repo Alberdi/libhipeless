@@ -478,6 +478,62 @@ static const char* test_xtrmm_rand_lltu(int flags, number t) {
 }
 
 template <typename number>
+static const char* test_xtrmm_rand_lunn(int flags, number t) {
+  // C = 7x9
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_lunn.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'U', 'N', 'N', 7, 9, (number)1, a, 7, b, 9, flags);
+  mu_assert("Error in test_xtrmm_rand_lunn(0).", equal_matrices(7, 9, b, 9, c, 9));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
+static const char* test_xtrmm_rand_lunu(int flags, number t) {
+  // C = 35x33
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_lunu.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'U', 'N', 'U', 35, 33, (number)1, a, 35, b, 33, flags);
+  mu_assert("Error in test_xtrmm_rand_lunu(0).", equal_matrices(35, 33, b, 33, c, 33));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
+static const char* test_xtrmm_rand_lutn(int flags, number t) {
+  // C = 37x40
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_lutn.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'U', 'T', 'N', 37, 40, (number)1, a, 37, b, 40, flags);
+  mu_assert("Error in test_xtrmm_rand_lutn(0).", equal_matrices(37, 40, b, 40, c, 40));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
+static const char* test_xtrmm_rand_lutu(int flags, number t) {
+  // C = 37x40
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_lutu.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'U', 'T', 'U', 37, 40, (number)1, a, 37, b, 40, flags);
+  mu_assert("Error in test_xtrmm_rand_lutu(0).", equal_matrices(37, 40, b, 40, c, 40));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
 static const char* all_tests(number t) {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -509,6 +565,10 @@ static const char* all_tests(number t) {
     mu_run_test(test_xtrmm_rand_llnu, flags[i], t);
     mu_run_test(test_xtrmm_rand_lltn, flags[i], t);
     mu_run_test(test_xtrmm_rand_lltu, flags[i], t);
+    mu_run_test(test_xtrmm_rand_lunn, flags[i], t);
+    mu_run_test(test_xtrmm_rand_lunu, flags[i], t);
+    mu_run_test(test_xtrmm_rand_lutn, flags[i], t);
+    mu_run_test(test_xtrmm_rand_lutu, flags[i], t);
   }
   return 0;
 }
