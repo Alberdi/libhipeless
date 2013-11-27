@@ -534,6 +534,34 @@ static const char* test_xtrmm_rand_lutu(int flags, number t) {
 }
 
 template <typename number>
+static const char* test_xtrmm_rand_rlnn(int flags, number t) {
+  // C = 33x39
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_rlnn.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('R', 'L', 'N', 'N', 33, 39, (number)1, a, 39, b, 39, flags);
+  mu_assert("Error in test_xtrmm_rand_rlnn(0).", equal_matrices(33, 39, b, 39, c, 39));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
+static const char* test_xtrmm_rand_rlnu(int flags, number t) {
+  // C = 34x38
+  number *a, *b, *c;
+  load_file("tests/xtrmm_rand_rlnu.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('R', 'L', 'N', 'U', 34, 38, (number)1, a, 38, b, 38, flags);
+  mu_assert("Error in test_xtrmm_rand_rlnu(0).", equal_matrices(34, 38, b, 38, c, 38));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
 static const char* all_tests(number t) {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -569,6 +597,9 @@ static const char* all_tests(number t) {
     mu_run_test(test_xtrmm_rand_lunu, flags[i], t);
     mu_run_test(test_xtrmm_rand_lutn, flags[i], t);
     mu_run_test(test_xtrmm_rand_lutu, flags[i], t);
+
+    mu_run_test(test_xtrmm_rand_rlnn, flags[i], t);
+    mu_run_test(test_xtrmm_rand_rlnu, flags[i], t);
   }
   return 0;
 }
