@@ -5,6 +5,7 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
                          float alpha, __global const float *a, __global const float *b, __global float *c) {
 
   float Csub = 0;
+  int row_a = left ? row : dim;
 
   // Thread index
   int tx = get_local_id(0);
@@ -44,14 +45,13 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(left && (ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
-       || !left && (ax >= dim || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > ax)))
+    if(ax >= row_a || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row_a+ax))
       As[tx][ty] = 0;
     else
-      if(unit && ((left && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row+ax))) || (!left && ax == ay)))
+      if(unit && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row_a+ax)))
         As[tx][ty] = 1;
       else
-        As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row+ax];
+        As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row_a+ax];
 
     if(bx >= m || by >= n)
       Bs[tx][ty] = 0;
@@ -76,6 +76,7 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
                          double alpha, __global const double *a, __global const double *b, __global double *c) {
 
   double Csub = 0;
+  int row_a = left ? row : dim;
 
   // Thread index
   int tx = get_local_id(0);
@@ -115,14 +116,13 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(left && (ax >= row || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row+ax))
-       || !left && (ax >= dim || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > ax)))
+    if(ax >= row_a || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row_a+ax))
       As[tx][ty] = 0;
     else
-      if(unit && ((left && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row+ax))) || (!left && ax == ay)))
+      if(unit && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row_a+ax)))
         As[tx][ty] = 1;
       else
-        As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row+ax];
+        As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row_a+ax];
 
     if(bx >= m || by >= n)
       Bs[tx][ty] = 0;
