@@ -11,7 +11,7 @@ mpihelper: mpihelper.cpp libhipeless.h
 test: test.cpp
 	g++ -o test test.cpp $(FLAGS)
 
-tester: tester.cpp
+tester: tester.cpp libhipeless.h
 	mpic++ -o tester tester.cpp libhipeless.h $(FLAGS)
 
 clean:
