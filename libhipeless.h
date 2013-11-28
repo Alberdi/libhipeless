@@ -1,3 +1,6 @@
+#ifndef HIPELESS_SEEN
+#define HIPELESS_SEEN
+
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
@@ -62,3 +65,5 @@ int blas_strmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
 }
 
 } // extern "C"
+
+#endif /* !HIPELESS_SEEN */
