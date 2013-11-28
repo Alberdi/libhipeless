@@ -115,6 +115,28 @@ static const char* test_xgemm_errors(int flags, number) {
 }
 
 template <typename number>
+static const char* test_xtrmm_errors(int flags, number) {
+  int result;
+
+  result = blas_xtrmm('X', 'X', 'X', 'X', -1, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, flags);
+  mu_assert("Error in test_xtrmm_errors(0).", result == HIPELESS_INVALID_VALUE_M);
+
+  result = blas_xtrmm('X', 'X', 'X', 'X', 32, -1, (number)1, (number*)NULL, 32, (number*)NULL, 32, flags);
+  mu_assert("Error in test_xtrmm_errors(1).", result == HIPELESS_INVALID_VALUE_N);
+
+  result = blas_xtrmm('L', 'X', 'X', 'X', 34, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, flags);
+  mu_assert("Error in test_xtrmm_errors(2).", result == HIPELESS_INVALID_VALUE_LDA);
+
+  result = blas_xtrmm('R', 'X', 'X', 'X', 32, 34, (number)1, (number*)NULL, 32, (number*)NULL, 34, flags);
+  mu_assert("Error in test_xtrmm_errors(3).", result == HIPELESS_INVALID_VALUE_LDA);
+
+  result = blas_xtrmm('L', 'X', 'X', 'X', 32, 34, (number)1, (number*)NULL, 32, (number*)NULL, 32, flags);
+  mu_assert("Error in test_xtrmm_errors(1).", result == HIPELESS_INVALID_VALUE_LDB);
+
+  return 0;
+}
+
+template <typename number>
 static const char* test_xgemm_ones(int flags, number t) {
   number *a, *b, *c, *d;
   load_file("tests/xgemm_ones.txt", &a, &b, &c);
@@ -746,7 +768,9 @@ static const char* all_tests(number t) {
   for(i = 0; i < 4; i++) {
     tests_run = 0;
     printf("Using flags = 0x%x.\n", flags[i], t);
+
     mu_run_test(test_xgemm_errors, flags[i], t);
+    mu_run_test(test_xtrmm_errors, flags[i], t);
 
     mu_run_test(test_xgemm_ones, flags[i], t);
     mu_run_test(test_xgemm_rand, flags[i], t);
