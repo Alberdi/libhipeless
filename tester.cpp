@@ -686,12 +686,12 @@ static const char* all_tests(number t) {
   for(i = 0; i < 4; i++) {
     tests_run = 0;
     printf("Using flags = 0x%x.\n", flags[i], t);
-/*    mu_run_test(test_xgemm_ones, flags[i], t);
+    mu_run_test(test_xgemm_ones, flags[i], t);
     mu_run_test(test_xgemm_rand, flags[i], t);
     mu_run_test(test_xgemm_rand_big, flags[i], t);
     mu_run_test(test_xgemm_rand_big_alphabeta, flags[i], t);
     mu_run_test(test_xgemm_row, flags[i], t);
-    mu_run_test(test_xgemm_row_trans, flags[i], t);*/
+    mu_run_test(test_xgemm_row_trans, flags[i], t);
 
     mu_run_test(test_xtrmm_ones_llnx, flags[i], t);
     mu_run_test(test_xtrmm_ones_lltx, flags[i], t);
@@ -732,8 +732,8 @@ static const char* all_tests() {
   if(result != 0) {
     return result;
   }
-/*  printf("\nTESTING DOUBLES\n");
-  result = all_tests((double) 1);*/
+  printf("\nTESTING DOUBLES\n");
+  result = all_tests((double) 1);
   return result;
 }
 
