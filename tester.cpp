@@ -86,29 +86,30 @@ static const char* test_tester(int flags, number t) {
 template <typename number>
 static const char* test_xgemm_errors(int flags, number) {
   int result;
+  number *a, *b, *c;
 
-  result = blas_xgemm('X', 'X', -1, 32, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, (number)0, (number*)NULL, 32, flags);
+  result = blas_xgemm('X', 'X', -1, 32, 32, (number)1, a, 32, b, 32, (number)0, c, 32, flags);
   mu_assert("Error in test_xgemm_errors(0).", result == HIPELESS_INVALID_VALUE_M);
 
-  result = blas_xgemm('X', 'X', 32, -1, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, (number)0, (number*)NULL, 32, flags);
+  result = blas_xgemm('X', 'X', 32, -1, 32, (number)1, a, 32, b, 32, (number)0, c, 32, flags);
   mu_assert("Error in test_xgemm_errors(1).", result == HIPELESS_INVALID_VALUE_N);
 
-  result = blas_xgemm('X', 'X', 32, 32, -1, (number)1, (number*)NULL, 32, (number*)NULL, 32, (number)0, (number*)NULL, 32, flags);
+  result = blas_xgemm('X', 'X', 32, 32, -1, (number)1, a, 32, b, 32, (number)0, c, 32, flags);
   mu_assert("Error in test_xgemm_errors(2).", result == HIPELESS_INVALID_VALUE_K);
 
-  result = blas_xgemm('N', 'X', 32, 32, 34, (number)1, (number*)NULL, 32, (number*)NULL, 32, (number)0, (number*)NULL, 32, flags);
+  result = blas_xgemm('N', 'X', 32, 32, 34, (number)1, a, 32, b, 32, (number)0, c, 32, flags);
   mu_assert("Error in test_xgemm_errors(3).", result == HIPELESS_INVALID_VALUE_LDA);
 
-  result = blas_xgemm('T', 'X', 34, 32, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, (number)0, (number*)NULL, 32, flags);
+  result = blas_xgemm('T', 'X', 34, 32, 32, (number)1, a, 32, b, 32, (number)0, c, 32, flags);
   mu_assert("Error in test_xgemm_errors(4).", result == HIPELESS_INVALID_VALUE_LDA);
 
-  result = blas_xgemm('N', 'N', 32, 34, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, (number)0, (number*)NULL, 32, flags);
+  result = blas_xgemm('N', 'N', 32, 34, 32, (number)1, a, 32, b, 32, (number)0, c, 32, flags);
   mu_assert("Error in test_xgemm_errors(5).", result == HIPELESS_INVALID_VALUE_LDB);
 
-  result = blas_xgemm('T', 'T', 32, 32, 34, (number)1, (number*)NULL, 32, (number*)NULL, 32, (number)0, (number*)NULL, 32, flags);
+  result = blas_xgemm('T', 'T', 32, 32, 34, (number)1, a, 32, b, 32, (number)0, c, 32, flags);
   mu_assert("Error in test_xgemm_errors(6).", result == HIPELESS_INVALID_VALUE_LDB);
 
-  result = blas_xgemm('T', 'T', 32, 34, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, (number)0, (number*)NULL, 32, flags);
+  result = blas_xgemm('T', 'T', 32, 34, 32, (number)1, a, 32, b, 32, (number)0, c, 32, flags);
   mu_assert("Error in test_xgemm_errors(7).", result == HIPELESS_INVALID_VALUE_LDC);
 
   return 0;
@@ -117,21 +118,22 @@ static const char* test_xgemm_errors(int flags, number) {
 template <typename number>
 static const char* test_xtrmm_errors(int flags, number) {
   int result;
+  number *a, *b;
 
-  result = blas_xtrmm('X', 'X', 'X', 'X', -1, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, flags);
+  result = blas_xtrmm('X', 'X', 'X', 'X', -1, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_errors(0).", result == HIPELESS_INVALID_VALUE_M);
 
-  result = blas_xtrmm('X', 'X', 'X', 'X', 32, -1, (number)1, (number*)NULL, 32, (number*)NULL, 32, flags);
+  result = blas_xtrmm('X', 'X', 'X', 'X', 32, -1, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_errors(1).", result == HIPELESS_INVALID_VALUE_N);
 
-  result = blas_xtrmm('L', 'X', 'X', 'X', 34, 32, (number)1, (number*)NULL, 32, (number*)NULL, 32, flags);
+  result = blas_xtrmm('L', 'X', 'X', 'X', 34, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_errors(2).", result == HIPELESS_INVALID_VALUE_LDA);
 
-  result = blas_xtrmm('R', 'X', 'X', 'X', 32, 34, (number)1, (number*)NULL, 32, (number*)NULL, 34, flags);
+  result = blas_xtrmm('R', 'X', 'X', 'X', 32, 34, (number)1, a, 32, b, 34, flags);
   mu_assert("Error in test_xtrmm_errors(3).", result == HIPELESS_INVALID_VALUE_LDA);
 
-  result = blas_xtrmm('L', 'X', 'X', 'X', 32, 34, (number)1, (number*)NULL, 32, (number*)NULL, 32, flags);
-  mu_assert("Error in test_xtrmm_errors(1).", result == HIPELESS_INVALID_VALUE_LDB);
+  result = blas_xtrmm('L', 'X', 'X', 'X', 32, 34, (number)1, a, 32, b, 32, flags);
+  mu_assert("Error in test_xtrmm_errors(4).", result == HIPELESS_INVALID_VALUE_LDB);
 
   return 0;
 }
