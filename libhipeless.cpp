@@ -806,6 +806,9 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
       free(a);
       free(b);
     }
+    if(!nota) {
+      MPI_Type_free(&transtype_a);
+    }
   }
 
   return HIPELESS_SUCCESS;
