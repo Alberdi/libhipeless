@@ -675,6 +675,34 @@ static const char* test_xtrmm_left_row(int flags, number t) {
 }
 
 template <typename number>
+static const char* test_xtrmm_right_col(int flags, number t) {
+  // C = 130x1
+  number *a, *b, *c;
+  load_file("tests/xtrmm_right_col.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('R', 'L', 'N', 'N', 130, 1, (number)1, a, 1, b, 1, flags);
+  mu_assert("Error in test_xtrmm_right_col(0).", equal_matrices(130, 1, b, 1, c, 1));
+
+  load_file("tests/xtrmm_right_col.txt", &a, &b, &c);
+  // B == C (Upper A == Lower A)
+  blas_xtrmm('R', 'U', 'N', 'N', 130, 1, (number)1, a, 1, b, 1, flags);
+  mu_assert("Error in test_xtrmm_right_col(1).", equal_matrices(130, 1, b, 1, c, 1));
+
+  load_file("tests/xtrmm_right_col.txt", &a, &b, &c);
+  // B == C ( A' == A)
+  blas_xtrmm('R', 'L', 'T', 'N', 130, 1, (number)1, a, 1, b, 1, flags);
+  mu_assert("Error in test_xtrmm_right_col(2).", equal_matrices(130, 1, b, 1, c, 1));
+
+  load_file("tests/xtrmm_right_col.txt", &a, &b, &c);
+  // B == C (Diag == 'U' and alpha = 123.4)
+  blas_xtrmm('R', 'L', 'T', 'U', 130, 1, (number)123.4, a, 1, b, 1, flags);
+  mu_assert("Error in test_xtrmm_right_col(3).", equal_matrices(130, 1, b, 1, c, 1));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+template <typename number>
 static const char* all_tests(number t) {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -721,6 +749,7 @@ static const char* all_tests(number t) {
     mu_run_test(test_xtrmm_rand_rutu, flags[i], t);
 
     mu_run_test(test_xtrmm_left_row, flags[i], t);
+    mu_run_test(test_xtrmm_right_col, flags[i], t);
   }
   return 0;
 }
