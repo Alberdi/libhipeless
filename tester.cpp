@@ -646,6 +646,35 @@ static const char* test_xtrmm_rand_rutu(int flags, number t) {
 }
 
 template <typename number>
+static const char* test_xtrmm_left_row(int flags, number t) {
+  // C = 1x129
+  number *a, *b, *c;
+  load_file("tests/xtrmm_left_row.txt", &a, &b, &c);
+
+  // B == C
+  blas_xtrmm('L', 'U', 'N', 'N', 1, 129, (number)1, a, 1, b, 129, flags);
+  mu_assert("Error in test_xtrmm_left_row(0).", equal_matrices(1, 129, b, 129, c, 129));
+
+  load_file("tests/xtrmm_left_row.txt", &a, &b, &c);
+  // B == C (Upper A == Lower A)
+  blas_xtrmm('L', 'L', 'N', 'N', 1, 129, (number)1, a, 1, b, 129, flags);
+  mu_assert("Error in test_xtrmm_left_row(1).", equal_matrices(1, 129, b, 129, c, 129));
+
+  load_file("tests/xtrmm_left_row.txt", &a, &b, &c);
+  // B == C (A' == A)
+  blas_xtrmm('L', 'L', 'T', 'N', 1, 129, (number)1, a, 1, b, 129, flags);
+  mu_assert("Error in test_xtrmm_left_row(2).", equal_matrices(1, 129, b, 129, c, 129));
+
+  load_file("tests/xtrmm_left_row.txt", &a, &b, &c);
+  // B == C (Diag == 'U' and alpha = 34.7543)
+  blas_xtrmm('L', 'U', 'T', 'U', 1, 129, (number)34.7543, a, 1, b, 129, flags);
+  mu_assert("Error in test_xtrmm_left_row(3).", equal_matrices(1, 129, b, 129, c, 129));
+
+  free(a); free(b); free(c);
+  return 0;
+}
+
+template <typename number>
 static const char* all_tests(number t) {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
@@ -657,12 +686,12 @@ static const char* all_tests(number t) {
   for(i = 0; i < 4; i++) {
     tests_run = 0;
     printf("Using flags = 0x%x.\n", flags[i], t);
-    mu_run_test(test_xgemm_ones, flags[i], t);
+/*    mu_run_test(test_xgemm_ones, flags[i], t);
     mu_run_test(test_xgemm_rand, flags[i], t);
     mu_run_test(test_xgemm_rand_big, flags[i], t);
     mu_run_test(test_xgemm_rand_big_alphabeta, flags[i], t);
     mu_run_test(test_xgemm_row, flags[i], t);
-    mu_run_test(test_xgemm_row_trans, flags[i], t);
+    mu_run_test(test_xgemm_row_trans, flags[i], t);*/
 
     mu_run_test(test_xtrmm_ones_llnx, flags[i], t);
     mu_run_test(test_xtrmm_ones_lltx, flags[i], t);
@@ -690,6 +719,8 @@ static const char* all_tests(number t) {
     mu_run_test(test_xtrmm_rand_runu, flags[i], t);
     mu_run_test(test_xtrmm_rand_rutn, flags[i], t);
     mu_run_test(test_xtrmm_rand_rutu, flags[i], t);
+
+    mu_run_test(test_xtrmm_left_row, flags[i], t);
   }
   return 0;
 }
@@ -701,8 +732,8 @@ static const char* all_tests() {
   if(result != 0) {
     return result;
   }
-  printf("\nTESTING DOUBLES\n");
-  result = all_tests((double) 1);
+/*  printf("\nTESTING DOUBLES\n");
+  result = all_tests((double) 1);*/
   return result;
 }
 
