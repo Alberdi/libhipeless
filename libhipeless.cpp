@@ -632,10 +632,6 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
     MPI_Comm_get_parent(&parent);
     if(parent == MPI_COMM_NULL) {
       mpi_size = read_mpi_size();
-      mpi_spawn(&intercomm, mpi_size);
-      root_argument = MPI_ROOT;
-      MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
-        
       rows = (int *) malloc(mpi_size*sizeof(int));
 
       if(left) {
@@ -648,6 +644,12 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
           // The equation is derived and explained in the documentation.
           rows[i] = round((2*dim+1 - sqrt((2*dim+1)*(2*dim+1)-4*(elems)))/2);
           dim -= rows[i];
+          if(rows[i] == 0) {
+            // Remove it
+            mpi_size--;
+            i -= delta;
+            end -= delta;
+          }
         }
         rows[end] = dim;
       }
@@ -658,6 +660,18 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
         }
         spawns_m = m/mpi_size;
         m = m - spawns_m*(mpi_size-1);
+        if(spawns_m == 0) {
+          // If the spawns won't do any work, we won't create them
+          mpi_size = 1;
+        }
+      }
+      if(mpi_size > 1) {
+        mpi_spawn(&intercomm, mpi_size);
+        root_argument = MPI_ROOT;
+        MPI_Bcast(&function, 1, MPI_INTEGER, root_argument, intercomm);
+      }
+      else {
+        flags &= ~USE_MPI;
       }
     }
     else {
