@@ -292,7 +292,7 @@ int blas_xgemm(cl_char transa, cl_char transb, cl_int m, cl_int n, cl_int k, num
   nota = transa == 'N' || transa == 'n';
   notb = transb == 'N' || transb == 'n';
   
-  if(flags & !MPI_SPAWN) {
+  if(flags != (USE_MPI | MPI_SPAWN)) {
     // Parameter checking
     if(m < 0) {
       return HIPELESS_INVALID_VALUE_M;
@@ -599,7 +599,7 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
   unit = diag == 'U' || diag == 'u' ? 1 : 0;
   nota = transa == 'N' || transa == 'n' ? 1 : 0;
 
-  if(flags & !MPI_SPAWN) {
+  if(flags != (USE_MPI | MPI_SPAWN)) {
     // Parameter checking
     if(m < 0) {
       return HIPELESS_INVALID_VALUE_M;
