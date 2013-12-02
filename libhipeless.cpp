@@ -585,8 +585,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
 template <typename number>
 int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int m, cl_int n,
                 number alpha, number *a, cl_int lda, number *b, cl_int ldb, unsigned int flags) {
-  int root_argument, mpi_size, spawns_m, left, upper, unit, nota, dim, i, j, elems, row;
-  int start, end, delta;
+  int root_argument, mpi_size, spawns_m, left, upper, unit, nota, dim, i, j, row;
+  int start, end, delta, p;
   int *rows;
   int function;
   MPI_Comm intercomm, parent;
@@ -635,16 +635,16 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
       rows = (int *) malloc(mpi_size*sizeof(int));
 
       if(left) {
-        elems = (dim*dim+dim)/mpi_size;
-        start = upper == nota ? 0 : mpi_size-1;
-        end = upper == nota ? mpi_size-1 : 0;
+        p = mpi_size;
+        start = upper == nota ? 0 : p-1;
+        end = upper == nota ? p-1 : 0;
         delta = upper == nota ? 1 : -1;
         for(i = start; i != end; i += delta) {
           // Calculate the consecutive rows to be processed by each processor.
           // The equation is derived and explained in the documentation.
-          rows[i] = round((2*dim+1 - sqrt((2*dim+1)*(2*dim+1)-4*(elems)))/2);
+          rows[i] = floor(dim+1 - sqrt((dim+0.5)*(dim+0.5)-(dim*dim+dim)/((p--)+1)));
           dim -= rows[i];
-          if(rows[i] == 0) {
+          if(rows[i] <= 0) {
             // Remove it
             mpi_size--;
             i -= delta;
