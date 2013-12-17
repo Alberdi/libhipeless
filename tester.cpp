@@ -59,9 +59,8 @@ void load_file(const char* filename, number** a, number** b, number** c) {
 
 template <typename number>
 static const char* test_tester(int flags) {
-  number *a, *b, *c;
-  c = NULL;
-  load_file("tests/xgemm_ones.txt", &a, &b, &c);
+  number *a, *b;
+  load_file("tests/xgemm_ones.txt", &a, &b, (number**)NULL);
 
   // A = B = ones(32, 32);
   mu_assert("Error in test_tester(0).", equal_matrices(32, 32, a, 32, b, 32));
@@ -78,8 +77,7 @@ static const char* test_tester(int flags) {
   mu_assert("Error in test_tester(3).", !equal_matrices(32, 34, a, 32, b, 32));
   mu_assert("Error in test_tester(4).", !equal_matrices(32, 32, a, 32, b, 30));
 
-  free(a);
-  free(b);
+  free(a); free(b);
   return 0;
 }
 
@@ -322,7 +320,8 @@ static const char* test_xtrmm_ones_llnx(int flags) {
   blas_xtrmm('L', 'L', 'N', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_llnx(0).", equal_matrices(32, 32, b, 32, c, 32));
 
-  load_file("tests/xtrmm_ones_llnx.txt", &a, &b, &c);
+
+  load_file("tests/xtrmm_ones_llnx.txt", &a, &b, (number**)NULL);
 
   // B == C (when diagonal of A is treated as ones)
   blas_xtrmm('L', 'L', 'N', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
@@ -342,7 +341,8 @@ static const char* test_xtrmm_ones_lltx(int flags) {
   blas_xtrmm('L', 'L', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_lltx(0).", equal_matrices(32, 32, b, 32, c, 32));
 
-  load_file("tests/xtrmm_ones_lltx.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_ones_lltx.txt", &a, &b, (number**)NULL);
 
   // B == C (when diagonal of A is treated as ones)
   blas_xtrmm('L', 'L', 'T', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
@@ -363,7 +363,7 @@ static const char* test_xtrmm_ones_lunx(int flags) {
   blas_xtrmm('L', 'U', 'N', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_lunx(0).", equal_matrices(32, 32, b, 32, c, 32));
 
-  load_file("tests/xtrmm_ones_lltx.txt", &a, &b, &c);
+  load_file("tests/xtrmm_ones_lltx.txt", &a, &b, (number**)NULL); 
 
   // B == C (when diagonal of A is treated as ones)
   blas_xtrmm('L', 'U', 'N', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
@@ -384,7 +384,8 @@ static const char* test_xtrmm_ones_lutx(int flags) {
   blas_xtrmm('L', 'U', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_lutx(0).", equal_matrices(32, 32, b, 32, c, 32));
 
-  load_file("tests/xtrmm_ones_llnx.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_ones_llnx.txt", &a, &b, (number**)NULL);
 
   // B == C (when diagonal of A is treated as ones)
   blas_xtrmm('L', 'U', 'T', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
@@ -404,7 +405,7 @@ static const char* test_xtrmm_ones_rlnx(int flags) {
   blas_xtrmm('R', 'L', 'N', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_rlnx(0).", equal_matrices(32, 32, b, 32, c, 32));
 
-  load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, &c);
+  load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, (number**)NULL);
 
   // B == C (when diagonal of A is treated as ones)
   blas_xtrmm('R', 'L', 'N', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
@@ -424,7 +425,8 @@ static const char* test_xtrmm_ones_rltx(int flags) {
   blas_xtrmm('R', 'L', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_rltx(0).", equal_matrices(32, 32, b, 32, c, 32));
 
-  load_file("tests/xtrmm_ones_rltx.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_ones_rltx.txt", &a, &b, (number**)NULL);
 
   // B == C (when diagonal of A is treated as ones)
   blas_xtrmm('R', 'L', 'T', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
@@ -445,7 +447,7 @@ static const char* test_xtrmm_ones_runx(int flags) {
   blas_xtrmm('R', 'U', 'N', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_runx(0).", equal_matrices(32, 32, b, 32, c, 32));
 
-  load_file("tests/xtrmm_ones_rltx.txt", &a, &b, &c);
+  load_file("tests/xtrmm_ones_rltx.txt", &a, &b, (number**)NULL);
 
   // B == C (when diagonal of A is treated as ones)
   blas_xtrmm('R', 'U', 'N', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
@@ -466,7 +468,8 @@ static const char* test_xtrmm_ones_rutx(int flags) {
   blas_xtrmm('R', 'U', 'T', 'N', 32, 32, (number)1, a, 32, b, 32, flags);
   mu_assert("Error in test_xtrmm_ones_rutx(0).", equal_matrices(32, 32, b, 32, c, 32));
 
-  load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, (number**)NULL);
 
   // B == C (when diagonal of A is treated as ones)
   blas_xtrmm('R', 'U', 'T', 'U', 32, 32, (number)1, a, 32, b, 32, flags);
@@ -710,17 +713,20 @@ static const char* test_xtrmm_left_row(int flags) {
   blas_xtrmm('L', 'U', 'N', 'N', 1, 129, (number)1, a, 1, b, 129, flags);
   mu_assert("Error in test_xtrmm_left_row(0).", equal_matrices(1, 129, b, 129, c, 129));
 
-  load_file("tests/xtrmm_left_row.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_left_row.txt", &a, &b, (number**)NULL);
   // B == C (Upper A == Lower A)
   blas_xtrmm('L', 'L', 'N', 'N', 1, 129, (number)1, a, 1, b, 129, flags);
   mu_assert("Error in test_xtrmm_left_row(1).", equal_matrices(1, 129, b, 129, c, 129));
 
-  load_file("tests/xtrmm_left_row.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_left_row.txt", &a, &b, (number**)NULL);
   // B == C (A' == A)
   blas_xtrmm('L', 'L', 'T', 'N', 1, 129, (number)1, a, 1, b, 129, flags);
   mu_assert("Error in test_xtrmm_left_row(2).", equal_matrices(1, 129, b, 129, c, 129));
 
-  load_file("tests/xtrmm_left_row.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_left_row.txt", &a, &b, (number**)NULL);
   // B == C (Diag == 'U' and alpha = 34.7543)
   blas_xtrmm('L', 'U', 'T', 'U', 1, 129, (number)34.7543, a, 1, b, 129, flags);
   mu_assert("Error in test_xtrmm_left_row(3).", equal_matrices(1, 129, b, 129, c, 129));
@@ -739,17 +745,20 @@ static const char* test_xtrmm_right_col(int flags) {
   blas_xtrmm('R', 'L', 'N', 'N', 130, 1, (number)1, a, 1, b, 1, flags);
   mu_assert("Error in test_xtrmm_right_col(0).", equal_matrices(130, 1, b, 1, c, 1));
 
-  load_file("tests/xtrmm_right_col.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_right_col.txt", &a, &b, (number**)NULL);
   // B == C (Upper A == Lower A)
   blas_xtrmm('R', 'U', 'N', 'N', 130, 1, (number)1, a, 1, b, 1, flags);
   mu_assert("Error in test_xtrmm_right_col(1).", equal_matrices(130, 1, b, 1, c, 1));
 
-  load_file("tests/xtrmm_right_col.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_right_col.txt", &a, &b, (number**)NULL);
   // B == C ( A' == A)
   blas_xtrmm('R', 'L', 'T', 'N', 130, 1, (number)1, a, 1, b, 1, flags);
   mu_assert("Error in test_xtrmm_right_col(2).", equal_matrices(130, 1, b, 1, c, 1));
 
-  load_file("tests/xtrmm_right_col.txt", &a, &b, &c);
+  free(a); free(b);
+  load_file("tests/xtrmm_right_col.txt", &a, &b, (number**)NULL);
   // B == C (Diag == 'U' and alpha = 123.4)
   blas_xtrmm('R', 'L', 'T', 'U', 130, 1, (number)123.4, a, 1, b, 1, flags);
   mu_assert("Error in test_xtrmm_right_col(3).", equal_matrices(130, 1, b, 1, c, 1));
