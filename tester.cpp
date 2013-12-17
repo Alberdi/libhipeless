@@ -144,23 +144,23 @@ static const char* test_xgemm_ones(int flags) {
   d = (number*) malloc(32*32*sizeof(number));
   
   // D == C
-  blas_xgemm('N', 'N', 32, 32, 32, (number)(number)1, a, 32, b, 32, (number)(number)0, d, 32, flags);
+  blas_xgemm('N', 'N', 32, 32, 32, (number)1, a, 32, b, 32, (number)0, d, 32, flags);
   mu_assert("Error in test_xgemm_ones(0).", equal_matrices(32, 32, d, 32, c, 32));
 
   // D == C when op(A) == A', (A is symmetric).
-  blas_xgemm('T', 'N', 32, 32, 32, (number)(number)1, a, 32, b, 32, (number)(number)0, d, 32, flags);
+  blas_xgemm('T', 'N', 32, 32, 32, (number)1, a, 32, b, 32, (number)0, d, 32, flags);
   mu_assert("Error in test_xgemm_ones(1).", equal_matrices(32, 32, d, 32, c, 32));
 
   // D == C when op(A) == A', (A is symmetric).
-  blas_xgemm('T', 'N', 32, 32, 32, (number)(number)1, a, 32, b, 32, (number)(number)0, d, 32, flags);
+  blas_xgemm('T', 'N', 32, 32, 32, (number)1, a, 32, b, 32, (number)0, d, 32, flags);
   mu_assert("Error in test_xgemm_ones(2).", equal_matrices(32, 32, d, 32, c, 32));
 
   // D == C when op(B) == B' (B is symmetric).
-  blas_xgemm('N', 'T', 32, 32, 32, (number)(number)1, a, 32, b, 32, (number)(number)0, d, 32, flags);
+  blas_xgemm('N', 'T', 32, 32, 32, (number)1, a, 32, b, 32, (number)0, d, 32, flags);
   mu_assert("Error in test_xgemm_ones(3).", equal_matrices(32, 32, d, 32, c, 32));
   
   // D == C when op(B) == B', op(A) == A' (A, B are symmetric).
-  blas_xgemm('T', 'T', 32, 32, 32, (number)(number)1, a, 32, b, 32, (number)(number)0, d, 32, flags);
+  blas_xgemm('T', 'T', 32, 32, 32, (number)1, a, 32, b, 32, (number)0, d, 32, flags);
   mu_assert("Error in test_xgemm_ones(4).", equal_matrices(32, 32, d, 32, c, 32));
 
   free(a); free(b); free(c); free(d);
