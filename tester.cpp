@@ -58,7 +58,7 @@ void load_file(const char* filename, number** a, number** b, number** c) {
 }
 
 template <typename number>
-static const char* test_tester(int flags, number t) {
+static const char* test_tester(int flags) {
   number *a, *b, *c;
   c = NULL;
   load_file("tests/xgemm_ones.txt", &a, &b, &c);
@@ -84,7 +84,7 @@ static const char* test_tester(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xgemm_errors(int flags, number) {
+static const char* test_xgemm_errors(int flags) {
   int result;
   number *a, *b, *c;
 
@@ -116,7 +116,7 @@ static const char* test_xgemm_errors(int flags, number) {
 }
 
 template <typename number>
-static const char* test_xtrmm_errors(int flags, number) {
+static const char* test_xtrmm_errors(int flags) {
   int result;
   number *a, *b;
 
@@ -139,7 +139,7 @@ static const char* test_xtrmm_errors(int flags, number) {
 }
 
 template <typename number>
-static const char* test_xgemm_ones(int flags, number t) {
+static const char* test_xgemm_ones(int flags) {
   number *a, *b, *c, *d;
   load_file("tests/xgemm_ones.txt", &a, &b, &c);
 
@@ -170,7 +170,7 @@ static const char* test_xgemm_ones(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xgemm_rand(int flags, number t) {
+static const char* test_xgemm_rand(int flags) {
   number *a, *b, *c, *d;
   load_file("tests/xgemm_rand.txt", &a, &b, &c);
 
@@ -201,7 +201,7 @@ static const char* test_xgemm_rand(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xgemm_rand_big(int flags, number t) {
+static const char* test_xgemm_rand_big(int flags) {
   number *a, *b, *c, *d;
   // A = 331x137; B = 137x401; C = 331x401;
   load_file("tests/xgemm_rand_big.txt", &a, &b, &c);
@@ -225,7 +225,7 @@ static const char* test_xgemm_rand_big(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xgemm_rand_big_alphabeta(int flags, number t) {
+static const char* test_xgemm_rand_big_alphabeta(int flags) {
   number *a, *b, *c, *d;
   int i, j;
   // A = 331x137; B = 137x401; C = 331x401;
@@ -248,7 +248,7 @@ static const char* test_xgemm_rand_big_alphabeta(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xgemm_row(int flags, number t) {
+static const char* test_xgemm_row(int flags) {
   number *a, *b, *c, *d;
   load_file("tests/xgemm_row.txt", &a, &b, &c);
 
@@ -287,7 +287,7 @@ static const char* test_xgemm_row(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xgemm_row_trans(int flags, number t) {
+static const char* test_xgemm_row_trans(int flags) {
   number *a, *b, *c, *d;
   load_file("tests/xgemm_row_trans.txt", &a, &b, &c);
 
@@ -313,7 +313,7 @@ static const char* test_xgemm_row_trans(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_ones_llnx(int flags, number t) {
+static const char* test_xtrmm_ones_llnx(int flags) {
   // Left, lower, not transposed
   number *a, *b, *c;
   load_file("tests/xtrmm_ones_llnx.txt", &a, &b, &c);
@@ -333,7 +333,7 @@ static const char* test_xtrmm_ones_llnx(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_ones_lltx(int flags, number t) {
+static const char* test_xtrmm_ones_lltx(int flags) {
   // Left, lower, transposed
   number *a, *b, *c;
   load_file("tests/xtrmm_ones_lltx.txt", &a, &b, &c);
@@ -353,7 +353,7 @@ static const char* test_xtrmm_ones_lltx(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_ones_lunx(int flags, number t) {
+static const char* test_xtrmm_ones_lunx(int flags) {
   // Left, upper, not transposed
   number *a, *b, *c;
   // The result is the same as lltx
@@ -374,7 +374,7 @@ static const char* test_xtrmm_ones_lunx(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_ones_lutx(int flags, number t) {
+static const char* test_xtrmm_ones_lutx(int flags) {
   // Left, upper, transposed
   number *a, *b, *c;
   // The result is the same as llnx
@@ -395,7 +395,7 @@ static const char* test_xtrmm_ones_lutx(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_ones_rlnx(int flags, number t) {
+static const char* test_xtrmm_ones_rlnx(int flags) {
   // Right, lower, not transposed
   number *a, *b, *c;
   load_file("tests/xtrmm_ones_rlnx.txt", &a, &b, &c);
@@ -415,7 +415,7 @@ static const char* test_xtrmm_ones_rlnx(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_ones_rltx(int flags, number t) {
+static const char* test_xtrmm_ones_rltx(int flags) {
   // Right, lower, not transposed
   number *a, *b, *c;
   load_file("tests/xtrmm_ones_rltx.txt", &a, &b, &c);
@@ -435,7 +435,7 @@ static const char* test_xtrmm_ones_rltx(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_ones_runx(int flags, number t) {
+static const char* test_xtrmm_ones_runx(int flags) {
   // Right, upper, non transposed
   number *a, *b, *c;
   // The result is the same as rltx
@@ -456,7 +456,7 @@ static const char* test_xtrmm_ones_runx(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_ones_rutx(int flags, number t) {
+static const char* test_xtrmm_ones_rutx(int flags) {
   // Right, upper, transposed
   number *a, *b, *c;
   // The result is the same as rlnx
@@ -477,7 +477,7 @@ static const char* test_xtrmm_ones_rutx(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_llnn(int flags, number t) {
+static const char* test_xtrmm_rand_llnn(int flags) {
   // C = 23x15
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_llnn.txt", &a, &b, &c);
@@ -491,7 +491,7 @@ static const char* test_xtrmm_rand_llnn(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_llnu(int flags, number t) {
+static const char* test_xtrmm_rand_llnu(int flags) {
   // C = 13x7
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_llnu.txt", &a, &b, &c);
@@ -505,7 +505,7 @@ static const char* test_xtrmm_rand_llnu(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_lltn(int flags, number t) {
+static const char* test_xtrmm_rand_lltn(int flags) {
   // C = 24x31
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_lltn.txt", &a, &b, &c);
@@ -519,7 +519,7 @@ static const char* test_xtrmm_rand_lltn(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_lltu(int flags, number t) {
+static const char* test_xtrmm_rand_lltu(int flags) {
   // C = 40x20
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_lltu.txt", &a, &b, &c);
@@ -533,7 +533,7 @@ static const char* test_xtrmm_rand_lltu(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_lunn(int flags, number t) {
+static const char* test_xtrmm_rand_lunn(int flags) {
   // C = 7x9
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_lunn.txt", &a, &b, &c);
@@ -547,7 +547,7 @@ static const char* test_xtrmm_rand_lunn(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_lunu(int flags, number t) {
+static const char* test_xtrmm_rand_lunu(int flags) {
   // C = 35x33
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_lunu.txt", &a, &b, &c);
@@ -561,7 +561,7 @@ static const char* test_xtrmm_rand_lunu(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_lutn(int flags, number t) {
+static const char* test_xtrmm_rand_lutn(int flags) {
   // C = 37x40
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_lutn.txt", &a, &b, &c);
@@ -575,7 +575,7 @@ static const char* test_xtrmm_rand_lutn(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_lutu(int flags, number t) {
+static const char* test_xtrmm_rand_lutu(int flags) {
   // C = 37x40
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_lutu.txt", &a, &b, &c);
@@ -589,7 +589,7 @@ static const char* test_xtrmm_rand_lutu(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_rlnn(int flags, number t) {
+static const char* test_xtrmm_rand_rlnn(int flags) {
   // C = 33x39
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_rlnn.txt", &a, &b, &c);
@@ -603,7 +603,7 @@ static const char* test_xtrmm_rand_rlnn(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_rlnu(int flags, number t) {
+static const char* test_xtrmm_rand_rlnu(int flags) {
   // C = 34x38
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_rlnu.txt", &a, &b, &c);
@@ -617,7 +617,7 @@ static const char* test_xtrmm_rand_rlnu(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_rltn(int flags, number t) {
+static const char* test_xtrmm_rand_rltn(int flags) {
   // C = 33x39
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_rltn.txt", &a, &b, &c);
@@ -631,7 +631,7 @@ static const char* test_xtrmm_rand_rltn(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_rltu(int flags, number t) {
+static const char* test_xtrmm_rand_rltu(int flags) {
   // C = 34x38
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_rltu.txt", &a, &b, &c);
@@ -645,7 +645,7 @@ static const char* test_xtrmm_rand_rltu(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_runn(int flags, number t) {
+static const char* test_xtrmm_rand_runn(int flags) {
   // C = 57x59
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_runn.txt", &a, &b, &c);
@@ -659,7 +659,7 @@ static const char* test_xtrmm_rand_runn(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_runu(int flags, number t) {
+static const char* test_xtrmm_rand_runu(int flags) {
   // C = 57x59
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_runu.txt", &a, &b, &c);
@@ -673,7 +673,7 @@ static const char* test_xtrmm_rand_runu(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_rutn(int flags, number t) {
+static const char* test_xtrmm_rand_rutn(int flags) {
   // C = 56x53
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_rutn.txt", &a, &b, &c);
@@ -687,7 +687,7 @@ static const char* test_xtrmm_rand_rutn(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_rand_rutu(int flags, number t) {
+static const char* test_xtrmm_rand_rutu(int flags) {
   // C = 56x53
   number *a, *b, *c;
   load_file("tests/xtrmm_rand_rutu.txt", &a, &b, &c);
@@ -701,7 +701,7 @@ static const char* test_xtrmm_rand_rutu(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_left_row(int flags, number t) {
+static const char* test_xtrmm_left_row(int flags) {
   // C = 1x129
   number *a, *b, *c;
   load_file("tests/xtrmm_left_row.txt", &a, &b, &c);
@@ -730,7 +730,7 @@ static const char* test_xtrmm_left_row(int flags, number t) {
 }
 
 template <typename number>
-static const char* test_xtrmm_right_col(int flags, number t) {
+static const char* test_xtrmm_right_col(int flags) {
   // C = 130x1
   number *a, *b, *c;
   load_file("tests/xtrmm_right_col.txt", &a, &b, &c);
@@ -759,57 +759,57 @@ static const char* test_xtrmm_right_col(int flags, number t) {
 }
 
 template <typename number>
-static const char* all_tests(number t) {
+static const char* all_tests() {
   int i;
   int flags[4] = {USE_CPU, USE_GPU, USE_CPU | USE_MPI, USE_GPU | USE_MPI};
 
   tests_run = 0;
-  mu_run_test(test_tester, flags[0], t);
+  mu_run_test(test_tester, flags[0]);
   printf("Tester ok.\n");
 
   for(i = 0; i < 4; i++) {
     tests_run = 0;
-    printf("Using flags = 0x%x.\n", flags[i], t);
+    printf("Using flags = 0x%x.\n", flags[i]);
 
-    mu_run_test(test_xgemm_errors, flags[i], t);
-    mu_run_test(test_xtrmm_errors, flags[i], t);
+    mu_run_test(test_xgemm_errors, flags[i]);
+    mu_run_test(test_xtrmm_errors, flags[i]);
 
-    mu_run_test(test_xgemm_ones, flags[i], t);
-    mu_run_test(test_xgemm_rand, flags[i], t);
-    mu_run_test(test_xgemm_rand_big, flags[i], t);
-    mu_run_test(test_xgemm_rand_big_alphabeta, flags[i], t);
-    mu_run_test(test_xgemm_row, flags[i], t);
-    mu_run_test(test_xgemm_row_trans, flags[i], t);
+    mu_run_test(test_xgemm_ones, flags[i]);
+    mu_run_test(test_xgemm_rand, flags[i]);
+    mu_run_test(test_xgemm_rand_big, flags[i]);
+    mu_run_test(test_xgemm_rand_big_alphabeta, flags[i]);
+    mu_run_test(test_xgemm_row, flags[i]);
+    mu_run_test(test_xgemm_row_trans, flags[i]);
 
-    mu_run_test(test_xtrmm_ones_llnx, flags[i], t);
-    mu_run_test(test_xtrmm_ones_lltx, flags[i], t);
-    mu_run_test(test_xtrmm_ones_lunx, flags[i], t);
-    mu_run_test(test_xtrmm_ones_lutx, flags[i], t);
-    mu_run_test(test_xtrmm_ones_rlnx, flags[i], t);
-    mu_run_test(test_xtrmm_ones_rltx, flags[i], t);
-    mu_run_test(test_xtrmm_ones_runx, flags[i], t);
-    mu_run_test(test_xtrmm_ones_rutx, flags[i], t);
+    mu_run_test(test_xtrmm_ones_llnx, flags[i]);
+    mu_run_test(test_xtrmm_ones_lltx, flags[i]);
+    mu_run_test(test_xtrmm_ones_lunx, flags[i]);
+    mu_run_test(test_xtrmm_ones_lutx, flags[i]);
+    mu_run_test(test_xtrmm_ones_rlnx, flags[i]);
+    mu_run_test(test_xtrmm_ones_rltx, flags[i]);
+    mu_run_test(test_xtrmm_ones_runx, flags[i]);
+    mu_run_test(test_xtrmm_ones_rutx, flags[i]);
 
-    mu_run_test(test_xtrmm_rand_llnn, flags[i], t);
-    mu_run_test(test_xtrmm_rand_llnu, flags[i], t);
-    mu_run_test(test_xtrmm_rand_lltn, flags[i], t);
-    mu_run_test(test_xtrmm_rand_lltu, flags[i], t);
-    mu_run_test(test_xtrmm_rand_lunn, flags[i], t);
-    mu_run_test(test_xtrmm_rand_lunu, flags[i], t);
-    mu_run_test(test_xtrmm_rand_lutn, flags[i], t);
-    mu_run_test(test_xtrmm_rand_lutu, flags[i], t);
+    mu_run_test(test_xtrmm_rand_llnn, flags[i]);
+    mu_run_test(test_xtrmm_rand_llnu, flags[i]);
+    mu_run_test(test_xtrmm_rand_lltn, flags[i]);
+    mu_run_test(test_xtrmm_rand_lltu, flags[i]);
+    mu_run_test(test_xtrmm_rand_lunn, flags[i]);
+    mu_run_test(test_xtrmm_rand_lunu, flags[i]);
+    mu_run_test(test_xtrmm_rand_lutn, flags[i]);
+    mu_run_test(test_xtrmm_rand_lutu, flags[i]);
 
-    mu_run_test(test_xtrmm_rand_rlnn, flags[i], t);
-    mu_run_test(test_xtrmm_rand_rlnu, flags[i], t);
-    mu_run_test(test_xtrmm_rand_rltn, flags[i], t);
-    mu_run_test(test_xtrmm_rand_rltu, flags[i], t);
-    mu_run_test(test_xtrmm_rand_runn, flags[i], t);
-    mu_run_test(test_xtrmm_rand_runu, flags[i], t);
-    mu_run_test(test_xtrmm_rand_rutn, flags[i], t);
-    mu_run_test(test_xtrmm_rand_rutu, flags[i], t);
+    mu_run_test(test_xtrmm_rand_rlnn, flags[i]);
+    mu_run_test(test_xtrmm_rand_rlnu, flags[i]);
+    mu_run_test(test_xtrmm_rand_rltn, flags[i]);
+    mu_run_test(test_xtrmm_rand_rltu, flags[i]);
+    mu_run_test(test_xtrmm_rand_runn, flags[i]);
+    mu_run_test(test_xtrmm_rand_runu, flags[i]);
+    mu_run_test(test_xtrmm_rand_rutn, flags[i]);
+    mu_run_test(test_xtrmm_rand_rutu, flags[i]);
 
-    mu_run_test(test_xtrmm_left_row, flags[i], t);
-    mu_run_test(test_xtrmm_right_col, flags[i], t);
+    mu_run_test(test_xtrmm_left_row, flags[i]);
+    mu_run_test(test_xtrmm_right_col, flags[i]);
   }
   return 0;
 }
@@ -817,12 +817,12 @@ static const char* all_tests(number t) {
 static const char* all_tests() {
   const char* result;
   printf("TESTING FLOATS\n");
-  result = all_tests((float) 1);
+  result = all_tests<float>();
   if(result != 0) {
     return result;
   }
   printf("\nTESTING DOUBLES\n");
-  result = all_tests((double) 1);
+  result = all_tests<double>();
   return result;
 }
 
