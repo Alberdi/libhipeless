@@ -1,11 +1,11 @@
 // Thread block size
 #define BLOCK_SIZE 16
 
-__kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int dim, int m, int n,
-                         float alpha, __global const float *a, __global const float *b, __global float *c) {
+__kernel void blas_strmm(int upper, int nota, int unit, int row, int dim, int m, int n, float alpha,
+                         __global const float *a, __global const float *b, __global float *c) {
 
+  int ay, bx;
   float Csub = 0;
-  int row_a = left ? row : dim;
 
   // Thread index
   int tx = get_local_id(0);
@@ -15,11 +15,6 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
   int x = tx + BLOCK_SIZE * get_group_id(0);
   int y = ty + BLOCK_SIZE * get_group_id(1);
 
-  int ax = x;
-  int ay = y;
-  int bx = x;
-  int by = y;
- 
   // Declaration of the local memory array As 
   // used to store the sub-matrix of a
   __local float As[BLOCK_SIZE][BLOCK_SIZE];
@@ -29,54 +24,44 @@ __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int d
   __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
   
   // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
-  int start = left && upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
+  int start = upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
   // On lower triangular matrices, we can skip the last blocks full of zeroes.
-  int end = !left || upper || upper == nota ? dim : dim - ((row-2-x+tx)/BLOCK_SIZE) * BLOCK_SIZE;
+  int end = upper || upper == nota ? dim : dim - ((row-2-x+tx)/BLOCK_SIZE) * BLOCK_SIZE;
 
   for(int i=start; i<end; i+=BLOCK_SIZE) {
-    if(left) {
-      ay = i+ty;
-      bx = i+tx;
-    }
-    else {
-      ax = i+tx;
-      by = i+ty;
-    }
+    ay = i+ty;
+    bx = i+tx;
+
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(ax >= row_a || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row_a+ax))
+    if(x >= row || ay >= dim || (upper == nota && ay < x) || (upper != nota && ay > dim-row+x))
       As[tx][ty] = 0;
     else
-      if(unit && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row_a+ax)))
+      if(unit && ((upper == nota && x == ay) || (upper != nota && ay == dim-row+x)))
         As[tx][ty] = 1;
       else
-        As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row_a+ax];
+        As[tx][ty] = nota ? a[x*dim+ay] : a[ay*row+x];
 
-    if(bx >= m || by >= n)
+    if(bx >= m || y >= n)
       Bs[tx][ty] = 0;
     else
-      Bs[tx][ty] = b[bx*n+by];
+      Bs[tx][ty] = b[bx*n+y];
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    if(left)
-      for(int l=0; l<BLOCK_SIZE; l++)
-        Csub += As[tx][l] * Bs[l][ty];
-    else
-      for(int l=0; l<BLOCK_SIZE; l++)
-        Csub += Bs[tx][l] * As[l][ty];
+    for(int l=0; l<BLOCK_SIZE; l++)
+      Csub += As[tx][l] * Bs[l][ty];
   }
 
-  if(y < n && x < (left ? row : m)) // In bounds
+  if(y < n && x < row) // In bounds
     c[x*n+y] = alpha*Csub;
 }
 
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
-__kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int dim, int m, int n,
-                         double alpha, __global const double *a, __global const double *b, __global double *c) {
-
+__kernel void blas_dtrmm(int upper, int nota, int unit, int row, int dim, int m, int n, double alpha,
+                         __global const double *a, __global const double *b, __global double *c) {
+  int ay, bx;
   double Csub = 0;
-  int row_a = left ? row : dim;
 
   // Thread index
   int tx = get_local_id(0);
@@ -86,11 +71,6 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
   int x = tx + BLOCK_SIZE * get_group_id(0);
   int y = ty + BLOCK_SIZE * get_group_id(1);
 
-  int ax = x;
-  int ay = y;
-  int bx = x;
-  int by = y;
- 
   // Declaration of the local memory array As 
   // used to store the sub-matrix of a
   __local double As[BLOCK_SIZE][BLOCK_SIZE];
@@ -100,45 +80,36 @@ __kernel void blas_dtrmm(int left, int upper, int nota, int unit, int row, int d
   __local double Bs[BLOCK_SIZE][BLOCK_SIZE];
   
   // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
-  int start = left && upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
+  int start = upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
   // On lower triangular matrices, we can skip the last blocks full of zeroes.
-  int end = !left || upper || upper == nota ? dim : dim - ((row-2-x+tx)/BLOCK_SIZE) * BLOCK_SIZE;
+  int end = upper || upper == nota ? dim : dim - ((row-2-x+tx)/BLOCK_SIZE) * BLOCK_SIZE;
 
   for(int i=start; i<end; i+=BLOCK_SIZE) {
-    if(left) {
-      ay = i+ty;
-      bx = i+tx;
-    }
-    else {
-      ax = i+tx;
-      by = i+ty;
-    }
+    ay = i+ty;
+    bx = i+tx;
+
     // Load the matrices from global memory to local memory; each thread loads one element of each matrix.
     // Barriers are used to be sure we don't overwrite an address that is going to be used.
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(ax >= row_a || ay >= dim || (upper == nota && ay < ax) || (upper != nota && ay > dim-row_a+ax))
+    if(x >= row || ay >= dim || (upper == nota && ay < x) || (upper != nota && ay > dim-row+x))
       As[tx][ty] = 0;
     else
-      if(unit && ((upper == nota && ax == ay) || (upper != nota && ay == dim-row_a+ax)))
+      if(unit && ((upper == nota && x == ay) || (upper != nota && ay == dim-row+x)))
         As[tx][ty] = 1;
       else
-        As[tx][ty] = nota ? a[ax*dim+ay] : a[ay*row_a+ax];
+        As[tx][ty] = nota ? a[x*dim+ay] : a[ay*row+x];
 
-    if(bx >= m || by >= n)
+    if(bx >= m || y >= n)
       Bs[tx][ty] = 0;
     else
-      Bs[tx][ty] = b[bx*n+by];
+      Bs[tx][ty] = b[bx*n+y];
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    if(left)
-      for(int l=0; l<BLOCK_SIZE; l++)
-        Csub += As[tx][l] * Bs[l][ty];
-    else
-      for(int l=0; l<BLOCK_SIZE; l++)
-        Csub += Bs[tx][l] * As[l][ty];
+    for(int l=0; l<BLOCK_SIZE; l++)
+      Csub += As[tx][l] * Bs[l][ty];
   }
 
-  if(y < n && x < (left ? row : m)) // In bounds
+  if(y < n && x < row) // In bounds
     c[x*n+y] = alpha*Csub;
 }
 

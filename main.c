@@ -35,9 +35,9 @@ int main(int argc, char* argv[]) {
   m = (int)(rand()%max_size)+16;
   k = (int)(rand()%max_size)+16;
   n = (int)(rand()%max_size)+16;
-  m = 1000;
-  n = 1000;
-  k = 1000;
+  m = 2048*4;
+  n = 2048*4;
+  k = 2048*4;
 
   transa = 'N';
   if(transa == 'N') {
@@ -72,8 +72,8 @@ int main(int argc, char* argv[]) {
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
     for(j=0; j<colsa; j++) {
-      //a[i*lda+j] = (float)(rand() % 256);
-      a[i*lda+j] = j+1;
+      a[i*lda+j] = (float)(rand() % 256);
+      //a[i*lda+j] = j+1;
       PM printf("%.0f ", a[i*lda+j]);
     }
     PM printf("\n");
@@ -82,21 +82,21 @@ int main(int argc, char* argv[]) {
   PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<rowsb; i++) {
     for(j=0; j<colsb; j++) {
-      //b[i*ldb+j] = (float)(rand() % 256);
-      b[i*ldb+j] = i*colsb+j;
+      b[i*ldb+j] = (float)(rand() % 256);
+      //b[i*ldb+j] = i*colsb+j;
       PM printf("%.0f ", b[i*ldb+j]);
     }
     PM printf("\n");
   }
 
-  for(i=0; i<m; i++) {
+/*  for(i=0; i<m; i++) {
     for(j=0; j<n ;j++) {
       c[i*ldc+j] = 10000;
     }
-  }
+  }*/
 
-  alpha = 1.2;
-  beta = 1.5;
+  alpha = 1.0;
+  beta = 0.0;
 
 /*        for(i=0;i<rowsa;i++)
         {
@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
         }*/
   gettimeofday(&t0, NULL);
   //blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
-  blas_strmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
+  blas_strmm('R', 'L', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
   gettimeofday(&t1, NULL);
 
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);

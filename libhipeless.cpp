@@ -469,7 +469,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xtrmm.cl", sizeof(number) == sizeof(cl_float) ? "blas_strmm" : "blas_dtrmm");
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, left ? "xtrmm-left.cl"  : "xtrmm-right.cl",
+                     sizeof(number) == sizeof(cl_float) ? "blas_strmm" : "blas_dtrmm");
   
   dev_row = (left ? row : m)/num_devices;
   last_dev_row = (left ? row : m) - dev_row*(num_devices-1);
@@ -546,18 +547,17 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     memC[i] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, iter_row*n*sizeof(number), NULL, &errcode);
     checkErr(errcode, "clCreateBufferC");
 
-    checkErr(clSetKernelArg(kernel, 0, sizeof(cl_int), &left), "clSetKernelArg0");
-    checkErr(clSetKernelArg(kernel, 1, sizeof(cl_int), &upper), "clSetKernelArg1");
-    checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &nota), "clSetKernelArg2");
-    checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), &unit), "clSetKernelArg3");
-    checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), left ? &iter_row : &row), "clSetKernelArg4");
-    checkErr(clSetKernelArg(kernel, 5, sizeof(cl_int), &dim), "clSetKernelArg5");
-    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_int), left ? &m : &iter_row), "clSetKernelArg6");
-    checkErr(clSetKernelArg(kernel, 7, sizeof(cl_int), &n), "clSetKernelArg7");
-    checkErr(clSetKernelArg(kernel, 8, sizeof(number), &alpha), "clSetKernelArg8");
-    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memA), "clSetKernelArg9");
-    checkErr(clSetKernelArg(kernel, 10, sizeof(cl_mem), &memB), "clSetKernelArg10");
-    checkErr(clSetKernelArg(kernel, 11, sizeof(cl_mem), &memC[i]), "clSetKernelArg11");
+    checkErr(clSetKernelArg(kernel, 0, sizeof(cl_int), &upper), "clSetKernelArg0");
+    checkErr(clSetKernelArg(kernel, 1, sizeof(cl_int), &nota), "clSetKernelArg1");
+    checkErr(clSetKernelArg(kernel, 2, sizeof(cl_int), &unit), "clSetKernelArg2");
+    checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), left ? &iter_row : &row), "clSetKernelArg3");
+    checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &dim), "clSetKernelArg4");
+    checkErr(clSetKernelArg(kernel, 5, sizeof(cl_int), left ? &m : &iter_row), "clSetKernelArg5");
+    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_int), &n), "clSetKernelArg6");
+    checkErr(clSetKernelArg(kernel, 7, sizeof(number), &alpha), "clSetKernelArg7");
+    checkErr(clSetKernelArg(kernel, 8, sizeof(cl_mem), &memA), "clSetKernelArg8");
+    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memB), "clSetKernelArg9");
+    checkErr(clSetKernelArg(kernel, 10, sizeof(cl_mem), &memC[i]), "clSetKernelArg10");
 
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     checkErr(errcode, "clEnqueueNDRangeKernel");
