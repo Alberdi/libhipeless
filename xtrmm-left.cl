@@ -26,7 +26,7 @@ __kernel void blas_strmm(int upper, int nota, int unit, int row, int dim, int m,
   // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
   int start = upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
   // On lower triangular matrices, we can skip the last blocks full of zeroes.
-  int end = upper || upper == nota ? dim : dim - ((row-2-x+tx)/BLOCK_SIZE) * BLOCK_SIZE;
+  int end = upper == nota ? dim : dim - ((row-2-x+tx)/BLOCK_SIZE) * BLOCK_SIZE;
 
   for(int i=start; i<end; i+=BLOCK_SIZE) {
     ay = i+ty;
