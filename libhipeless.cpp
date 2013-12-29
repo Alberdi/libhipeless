@@ -104,7 +104,7 @@ void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, c
 }
 
 void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kernel, cl_device_id* devices,
-                        size_t size_devices, const char *filename, const char *kernelfunction) {
+                        size_t size_devices, const char *filename, int use_floats) {
   cl_int errcode;
 
   // Load the filen into source
@@ -117,8 +117,8 @@ void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kern
   *program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
   checkErr(errcode, "clCreateProgramWithSource");
 
-  char params[20];
-  sprintf(params, "-D BLOCK_SIZE=%i", BLOCK_SIZE);
+  char params[35];
+  sprintf(params, "-DBLOCK_SIZE=%i -Dnumber=%s", BLOCK_SIZE, use_floats ? "float" : "double");
   errcode = clBuildProgram(*program, size_devices/sizeof(cl_device_id), devices, params, NULL, NULL);
   if(errcode == CL_BUILD_PROGRAM_FAILURE) {
     // Determine the size of the log
@@ -136,7 +136,7 @@ void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kern
   }
   checkErr(errcode, "clBuildProgram");
 
-  *kernel = clCreateKernel(*program, kernelfunction, &errcode);
+  *kernel = clCreateKernel(*program, "function", &errcode);
   checkErr(errcode, "clCreateKernel");
 }
 
@@ -166,7 +166,8 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xgemm.cl", sizeof(number) == sizeof(cl_float) ? "blas_sgemm" : "blas_dgemm");
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xgemm.cl",
+                     sizeof(number) == sizeof(cl_float));
   
   dev_m = m/num_devices;
   last_dev_m = m - dev_m*(num_devices-1);
@@ -471,7 +472,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   global_work_size[1] = n + (n % BLOCK_SIZE ? BLOCK_SIZE - (n % BLOCK_SIZE) : 0);
 
   opencl_intialize(&context, &num_devices, &size_devices, &devices, flags);
-  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xtrmm.cl", sizeof(number) == sizeof(cl_float) ? "blas_strmm" : "blas_dtrmm");
+  opencl_load_kernel(context, &program, &kernel, devices, size_devices, "xtrmm.cl",
+                     sizeof(number) == sizeof(cl_float));
   
   dev_row = (left ? row : m)/num_devices;
   last_dev_row = (left ? row : m) - dev_row*(num_devices-1);
