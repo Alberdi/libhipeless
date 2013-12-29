@@ -117,7 +117,9 @@ void opencl_load_kernel(cl_context context, cl_program *program, cl_kernel *kern
   *program = clCreateProgramWithSource(context, 1, &source, size_source, &errcode);
   checkErr(errcode, "clCreateProgramWithSource");
 
-  errcode = clBuildProgram(*program, size_devices/sizeof(cl_device_id), devices, NULL, NULL, NULL);
+  char params[20];
+  sprintf(params, "-D BLOCK_SIZE=%i", BLOCK_SIZE);
+  errcode = clBuildProgram(*program, size_devices/sizeof(cl_device_id), devices, params, NULL, NULL);
   if(errcode == CL_BUILD_PROGRAM_FAILURE) {
     // Determine the size of the log
     size_t log_size;

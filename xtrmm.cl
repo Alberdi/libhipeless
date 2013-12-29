@@ -1,6 +1,3 @@
-// Thread block size
-#define BLOCK_SIZE 16
-
 __kernel void blas_strmm(int left, int upper, int nota, int unit, int row, int dim, int m, int n,
                          float alpha, __global const float *a, __global const float *b, __global float *c) {
 

@@ -1,6 +1,3 @@
-// Thread block size
-#define BLOCK_SIZE 16
-
 __kernel void blas_sgemm(int nota, int notb, int m, int n, int k, float alpha, __global const float *a,
                          __global const float *b, float beta, __global float *c) {
 
