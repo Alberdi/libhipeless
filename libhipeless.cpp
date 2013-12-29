@@ -186,7 +186,7 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
     iter_m = i == num_devices-1 ? last_dev_m : dev_m;
     global_work_size[0] = iter_m + (iter_m % BLOCK_SIZE ? BLOCK_SIZE - (iter_m % BLOCK_SIZE) : 0);
 
-    command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
+    command_queues[i] = clCreateCommandQueue(context, devices[i], NULL, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
 
     if(nota) {
@@ -505,7 +505,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     iter_row_b = left ? dim : iter_row;
     global_work_size[0] = iter_row + (iter_row % BLOCK_SIZE ? BLOCK_SIZE - (iter_row % BLOCK_SIZE) : 0);
 
-    command_queues[i] = clCreateCommandQueue(context, devices[i], CL_QUEUE_PROFILING_ENABLE, &errcode);
+    command_queues[i] = clCreateCommandQueue(context, devices[i], NULL, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
 
     if(nota) {
