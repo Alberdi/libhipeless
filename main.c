@@ -14,13 +14,13 @@
 #endif
 
 int main(int argc, char* argv[]) {
+  typedef cl_float number;
+//  typedef cl_double number;
   unsigned int flags = USE_CPU;
   cl_int i, j, m, k, n;
   cl_int lda, ldb, ldc;
-  cl_float *a, *b, *c;
-  cl_float alpha, beta;
-  //cl_double *a, *b, *c;
-  //cl_double alpha, beta;
+  number *a, *b, *c;
+  number alpha, beta;
   cl_char transa, transb;
   int rowsa, colsa, rowsb, colsb;
   timeval t0, t1;
@@ -35,9 +35,9 @@ int main(int argc, char* argv[]) {
   m = (int)(rand()%max_size)+16;
   k = (int)(rand()%max_size)+16;
   n = (int)(rand()%max_size)+16;
-  m = 2048*4;
-  n = 2048*4;
-  k = 2048*4;
+  m = 2048*2;
+  n = 2048*2;
+  k = 2048*2;
 
   transa = 'N';
   if(transa == 'N') {
@@ -62,18 +62,14 @@ int main(int argc, char* argv[]) {
   ldb = colsb;
   ldc = n;
 
-  a = (cl_float *) malloc(rowsa*lda*sizeof(cl_float));
-  b = (cl_float *) malloc(rowsb*ldb*sizeof(cl_float));
-  c = (cl_float *) malloc(m*ldc*sizeof(cl_float));
-  //a = (cl_double *) malloc(rowsa*lda*sizeof(cl_double));
-  //b = (cl_double *) malloc(rowsb*ldb*sizeof(cl_double));
-  //c = (cl_double *) malloc(m*ldc*sizeof(cl_double));
+  a = (number *) malloc(rowsa*lda*sizeof(number));
+  b = (number *) malloc(rowsb*ldb*sizeof(number));
+  c = (number *) malloc(m*ldc*sizeof(number));
 
   PM printf("#name:A\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsa, colsa);
   for(i=0; i<rowsa; i++) {
     for(j=0; j<colsa; j++) {
-      a[i*lda+j] = (float)(rand() % 256);
-      //a[i*lda+j] = j+1;
+      a[i*lda+j] = (number)(rand() % 256);
       PM printf("%.0f ", a[i*lda+j]);
     }
     PM printf("\n");
@@ -82,34 +78,18 @@ int main(int argc, char* argv[]) {
   PM printf("#name:B\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
   for(i=0; i<rowsb; i++) {
     for(j=0; j<colsb; j++) {
-      b[i*ldb+j] = (float)(rand() % 256);
-      //b[i*ldb+j] = i*colsb+j;
+      b[i*ldb+j] = (number)(rand() % 256);
       PM printf("%.0f ", b[i*ldb+j]);
     }
     PM printf("\n");
   }
 
-/*  for(i=0; i<m; i++) {
-    for(j=0; j<n ;j++) {
-      c[i*ldc+j] = 10000;
-    }
-  }*/
-
   alpha = 1.0;
   beta = 0.0;
 
-/*        for(i=0;i<rowsa;i++)
-        {
-            for(j=0;j<colsb;j++)
-            {
-                c[i*rowsa+j]=0;
-                for(k=0;k<rowsa;k++)
-                    c[i*rowsa+j]+=a[i*rowsa+k]*b[k*rowsb+j];
-            }
-        }*/
   gettimeofday(&t0, NULL);
-  //blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
-  blas_strmm('R', 'L', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
+  blas_sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, flags);
+  //blas_strmm('L', 'U', 'N', 'N', rowsb, colsb, alpha, a, lda, b, ldb, flags);
   gettimeofday(&t1, NULL);
 
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", rowsb, colsb);
@@ -124,7 +104,7 @@ int main(int argc, char* argv[]) {
   elapsed += (t1.tv_usec - t0.tv_usec) / 1000000.0;   // usec to seconds.
   printf("Elapsed time: %f seconds.\n", elapsed);
 
-/*  // Result printing
+  // Result printing
   PM printf("#name:C\n#type:matrix\n#rows:%i\n#columns:%i\n", m, n);
   for(i=0; i<m; i++) {
     for(j=0; j<n; j++) {
@@ -132,7 +112,7 @@ int main(int argc, char* argv[]) {
     }
     PM printf("\n");
   }
-*/
+
   if(flags & USE_MPI) {
     MPI_Finalize();
   }
