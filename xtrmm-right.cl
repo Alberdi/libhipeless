@@ -21,7 +21,12 @@ __kernel void function(int upper, int nota, int unit, int row, int dim, int m, i
   // used to store the sub-matrix of b
   __local number Bs[BLOCK_SIZE][BLOCK_SIZE];
   
-  for(int i=0; i<dim; i+=BLOCK_SIZE) {
+ // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
+ int start = upper != nota ? (y/BLOCK_SIZE) * BLOCK_SIZE : 0;
+ // On lower triangular matrices, we can skip the last blocks full of zeroes.
+ int end = upper != nota ? dim : dim - ((dim-2-y+ty)/BLOCK_SIZE) * BLOCK_SIZE;
+
+  for(int i=start; i<end; i+=BLOCK_SIZE) {
     ax = i+tx;
     by = i+ty;
 
