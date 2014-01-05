@@ -41,7 +41,7 @@ __kernel void function(int upper, int nota, int unit, int row, int dim, int m, i
       else
         As[tx][ty] = nota ? a[x*dim+ay] : a[ay*row+x];
 
-    if(bx >= m || y >= n)
+    if(bx >= dim || y >= n)
       Bs[tx][ty] = 0;
     else
       Bs[tx][ty] = b[bx*n+y];
