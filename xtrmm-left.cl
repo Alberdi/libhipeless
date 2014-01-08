@@ -22,9 +22,9 @@ __kernel void function(int upper, int nota, int unit, int row, int dim, int m, i
   __local number Bs[BLOCK_SIZE][BLOCK_SIZE];
   
   // If it's an upper triangular matrix, we can skip the first blocks full of zeroes.
-  int start = upper == nota ? (x/BLOCK_SIZE) * BLOCK_SIZE : 0;
+  int start = upper == nota ? get_group_id(0) * BLOCK_SIZE : 0;
   // On lower triangular matrices, we can skip the last blocks full of zeroes.
-  int end = upper == nota ? dim : dim - ((row-2-x+tx)/BLOCK_SIZE) * BLOCK_SIZE;
+  int end = upper == nota ? dim : dim - ((row-2-BLOCK_SIZE*get_group_id(0))/BLOCK_SIZE) * BLOCK_SIZE;
 
   for(int i=start; i<end; i+=BLOCK_SIZE) {
     ay = i+ty;
