@@ -593,7 +593,7 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
   int *rows;
   int function;
   MPI_Comm intercomm, parent;
-  MPI_Datatype mpi_number, transtype_a;
+  MPI_Datatype mpi_number, transtype_a, transtype_b;
 
   function = sizeof(number) == sizeof(cl_float) ? STRMM : DTRMM;
 
@@ -725,24 +725,11 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
             MPI_Send(&a[start], 1 , transtype_a, i, XTRMM_TAG_DATA, intercomm);
           }
         }
-        if(left) {
-          // Send B, we don't need to send the rows that would be multiplied by zero
-          for(j = 0; j < dim; j++) {
-            if(upper == nota) {
-              // Only the last dim rows are needed
-              MPI_Send(&b[(m-dim+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
-            }
-            else {
-              // Only the first dim rows are needed
-              MPI_Send(&b[j*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
-            }
-          }
-        }
-        else { // If not left
-          for(j = 0; j < spawns_m; j++) {
-            MPI_Send(&b[(j+i*spawns_m+m)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm);
-          }
-        }
+        // Send B, we don't need to send the rows that would be multiplied by zero
+        MPI_Type_vector(left ? dim : spawns_m, n, ldb, mpi_number, &transtype_b);
+        MPI_Type_commit(&transtype_b);
+        start = left ? (upper == nota ? m-dim : 0 ) : i*spawns_m+m;
+        MPI_Send(&b[start*ldb], 1, transtype_b, i, XTRMM_TAG_DATA, intercomm);
       }
       // Restore values for parent operation
       dim = upper == nota ? (left ? m : n) : rows[0];
@@ -781,9 +768,7 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
       }
       // Recv B
       end = left ? dim : m;
-      for(j = 0; j < end; j++) {
-        MPI_Recv(&b[j*ldb], n, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
-      }
+      MPI_Recv(b, end*n, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
     }
   }
 
