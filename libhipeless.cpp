@@ -740,12 +740,7 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
     }
   }
 
-gettimeofday(&t0, NULL);
   opencl_xtrmm(left, upper, nota, unit, row, dim, m, n, alpha, a, lda, b, ldb, flags);
-gettimeofday(&t1, NULL);
-elapsed = (t1.tv_sec - t0.tv_sec);
-elapsed += (t1.tv_usec - t0.tv_usec) / 1000000.0;   // usec to seconds.
-printf("Kernel (%i): %f seconds.\n", parent == MPI_COMM_NULL, elapsed);
 
   if(flags & USE_MPI) {
     if(parent == MPI_COMM_NULL) {
