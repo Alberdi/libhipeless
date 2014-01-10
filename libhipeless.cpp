@@ -757,8 +757,6 @@ printf("Kernel (%i): %f seconds.\n", parent == MPI_COMM_NULL, elapsed);
         start += left ? rows[i] : (i == 0 ? m : spawns_m);
         row = left ? rows[i+1] : spawns_m;
 
-        // Send the number of rows expected
-        MPI_Send(&row, 1, MPI_INT, i, XTRMM_TAG_DATA, intercomm);
         // Receive the outsourced rows of B
         MPI_Type_vector(row, n, ldb, mpi_number, &transtype_b);
         MPI_Type_commit(&transtype_b);
@@ -769,9 +767,7 @@ printf("Kernel (%i): %f seconds.\n", parent == MPI_COMM_NULL, elapsed);
       MPI_Type_free(&transtype_b);
     }
     else {
-      // Receive the number of rows expected
-      MPI_Recv(&row, 1, MPI_INT, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
-      MPI_Send(b, row*n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
+      MPI_Send(b, (left ? row : m)*n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
       free(a);
       free(b);
     }
