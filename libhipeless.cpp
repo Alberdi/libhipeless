@@ -765,9 +765,9 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
         // Send the number of rows expected
         MPI_Send(&end, 1, MPI_INT, i, XTRMM_TAG_DATA, intercomm);
         // Receive the outsourced rows of B
-        for(j = 0; j < end; j++) {
-          MPI_Recv(&b[(row+j)*ldb], n, mpi_number, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
-        }
+        MPI_Type_vector(end, n, ldb, mpi_number, &transtype_b);
+        MPI_Type_commit(&transtype_b);
+        MPI_Recv(&b[row*ldb], 1, transtype_b, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
       }
       free(rows);
       MPI_Type_free(&transtype_a);
@@ -776,14 +776,10 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
     else {
       // Receive the number of rows expected
       MPI_Recv(&end, 1, MPI_INT, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
-      // Send B
-      for(j = 0; j < end; j++) {
-        MPI_Send(&b[j*ldb], n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
-      }
+      MPI_Send(b, end*n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
       free(a);
       free(b);
     }
-    
   }
 
   return HIPELESS_SUCCESS;
