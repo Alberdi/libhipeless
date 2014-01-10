@@ -694,13 +694,6 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
     MPI_Bcast(&unit, 1, MPI_INTEGER, root_argument, intercomm);
     MPI_Bcast(&nota, 1, MPI_INTEGER, root_argument, intercomm);
 
-    if(!nota) {
-      // We'll need to use vectors to send the columns
-      MPI_Type_vector(1, 1, lda, mpi_number, &transtype_a);
-      MPI_Type_create_resized(transtype_a, 0, m*lda*sizeof(number), &transtype_a);
-      MPI_Type_commit(&transtype_a);
-    }
-
     if(parent == MPI_COMM_NULL) {
       row = 0;
       for(i = 0; i < mpi_size-1; i++) {
@@ -708,23 +701,14 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
         dim = upper == nota ? (left ? m-row : n-row) : row+rows[i+1];
         MPI_Send(&rows[i+1], 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
         MPI_Send(&dim, 1, MPI_INTEGER, i, XTRMM_TAG_DIM, intercomm);
-        // Send A, each node i needs rows[i] rows of A
-        for(j = 0; j < rows[i+1]; j++) {
-          if(nota) {
-            if(upper) {
-              MPI_Send(&a[(row+j)*lda + row + j + unit], dim-j-unit, mpi_number, i, XTRMM_TAG_DATA, intercomm);
-            }
-            else {
-              MPI_Send(&a[(row+j)*lda], row+1+j-unit, mpi_number, i, XTRMM_TAG_DATA, intercomm);
-            }
-          }
-          else { // TRANSA = 'T'
-            MPI_Type_vector(upper ? row+1+j-unit : dim-j-unit, 1, lda, mpi_number, &transtype_a);
-            MPI_Type_commit(&transtype_a);
-            start = upper ? row+j : row+j+lda*(row+j+unit);
-            MPI_Send(&a[start], 1 , transtype_a, i, XTRMM_TAG_DATA, intercomm);
-          }
-        }
+        
+        // Send A, each node i needs rows[i] rows (or cols) of A
+        MPI_Type_vector(nota ? rows[i+1] : dim, nota ? dim : rows[i+1],
+                        lda, mpi_number, &transtype_a);
+        MPI_Type_commit(&transtype_a);
+        start = nota ? (row*lda + (upper ? row : 0)) : row + (upper ? 0 : lda*row);
+        MPI_Send(&a[start], 1, transtype_a, i, XTRMM_TAG_DATA, intercomm);
+
         // Send B, we don't need to send the rows that would be multiplied by zero
         MPI_Type_vector(left ? dim : spawns_m, n, ldb, mpi_number, &transtype_b);
         MPI_Type_commit(&transtype_b);
@@ -750,25 +734,9 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
       a = (number *) malloc(row*dim*sizeof(number));
       b = (number *) malloc(m*n*sizeof(number));
       // Recv A
-      for(j = 0; j < row; j++) {
-        if(nota) {
-          if(upper) {
-            MPI_Recv(&a[j*lda + j + unit], dim-j-unit, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
-          }
-          else {
-            MPI_Recv(&a[j*lda], dim-row+1+j-unit, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
-          }
-        }
-        else { // TRANSA = 'T'
-          MPI_Type_vector(upper ? dim-row+1+j-unit : dim-j-unit , 1, lda, mpi_number, &transtype_a);
-          MPI_Type_commit(&transtype_a);
-          start = upper ? j : j+lda*(j+unit);
-          MPI_Recv(&a[start], 1, transtype_a, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
-        }
-      }
+      MPI_Recv(a, row*dim, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
       // Recv B
-      end = left ? dim : m;
-      MPI_Recv(b, end*n, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+      MPI_Recv(b, m*n, mpi_number, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
     }
   }
 
