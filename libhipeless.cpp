@@ -740,34 +740,29 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
     }
   }
 
+gettimeofday(&t0, NULL);
   opencl_xtrmm(left, upper, nota, unit, row, dim, m, n, alpha, a, lda, b, ldb, flags);
+gettimeofday(&t1, NULL);
+elapsed = (t1.tv_sec - t0.tv_sec);
+elapsed += (t1.tv_usec - t0.tv_usec) / 1000000.0;   // usec to seconds.
+printf("Kernel (%i): %f seconds.\n", parent == MPI_COMM_NULL, elapsed);
 
   if(flags & USE_MPI) {
     if(parent == MPI_COMM_NULL) {
-      row = 0;
+      start = 0;
       // Recv B
       // We recover the chunks in order because otherwise we wouldn't know where to place them
       for(i = 0; i < mpi_size-1; i++) {
-        if(left) {
-          row += rows[i];
-          end = rows[i+1];
-        }
-        else {
-          // If i == 0 more rows could have been processed by the master
-          if(i == 0) {
-            row = m;
-            end = spawns_m;
-          }
-          else {
-            row += spawns_m; 
-          }
-        }
+        // If i == 0 more rows could have been processed by the master
+        start += left ? rows[i] : (i == 0 ? m : spawns_m);
+        row = left ? rows[i+1] : spawns_m;
+
         // Send the number of rows expected
-        MPI_Send(&end, 1, MPI_INT, i, XTRMM_TAG_DATA, intercomm);
+        MPI_Send(&row, 1, MPI_INT, i, XTRMM_TAG_DATA, intercomm);
         // Receive the outsourced rows of B
-        MPI_Type_vector(end, n, ldb, mpi_number, &transtype_b);
+        MPI_Type_vector(row, n, ldb, mpi_number, &transtype_b);
         MPI_Type_commit(&transtype_b);
-        MPI_Recv(&b[row*ldb], 1, transtype_b, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+        MPI_Recv(&b[start*ldb], 1, transtype_b, i, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
       }
       free(rows);
       MPI_Type_free(&transtype_a);
@@ -775,8 +770,8 @@ int blas_xtrmm(cl_char side, cl_char uplo, cl_char transa, cl_char diag, cl_int 
     }
     else {
       // Receive the number of rows expected
-      MPI_Recv(&end, 1, MPI_INT, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
-      MPI_Send(b, end*n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
+      MPI_Recv(&row, 1, MPI_INT, 0, XTRMM_TAG_DATA, intercomm, MPI_STATUS_IGNORE);
+      MPI_Send(b, row*n, mpi_number, 0, XTRMM_TAG_DATA, intercomm);
       free(a);
       free(b);
     }
