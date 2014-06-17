@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <mpi.h>
+#include <sys/time.h>
 
 #define XTRMM_TAG_DIM  3122
 #define XTRMM_TAG_DATA 3123
@@ -82,13 +83,12 @@ void opencl_intialize(cl_context *context, cl_uint *num_devices, size_t *size_de
 }
 
 void opencl_finalize(cl_context context, cl_program program, cl_kernel kernel, cl_command_queue *command_queues,
-                     cl_uint num_devices, cl_device_id *devices, cl_mem memA, cl_mem memB, cl_mem *memC) {
+                     cl_uint num_devices, cl_device_id *devices, cl_mem *memA, cl_mem *memB, cl_mem *memC) {
   int i;
 
-  clReleaseMemObject(memA);
-  clReleaseMemObject(memB);
-
   for(i=0; i < num_devices; i++) {
+    clReleaseMemObject(memA[i]);
+    clReleaseMemObject(memB[i]);
     clReleaseMemObject(memC[i]);
     clFinish(command_queues[i]);
     clReleaseCommandQueue(command_queues[i]);
@@ -149,8 +149,7 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
   cl_context context;
   cl_device_id *devices;
   cl_command_queue *command_queues;
-  cl_mem memA, memB;
-  cl_mem *memC;
+  cl_mem *memA, *memB, *memC;
   cl_program program;
   cl_kernel kernel;
 
@@ -177,13 +176,10 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
     num_devices = 1;
   }
 
-  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, last_dev_m*k*sizeof(number), NULL, &errcode);
-  checkErr(errcode, "clCreateBufferA");
-
-  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, k*n*sizeof(number), NULL, &errcode);
-  checkErr(errcode, "clCreateBufferB");
 
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
+  memA = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
+  memB = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
     iter_m = i == num_devices-1 ? last_dev_m : dev_m;
@@ -192,42 +188,48 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
     command_queues[i] = clCreateCommandQueue(context, devices[i], NULL, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
 
+    memA[i] = clCreateBuffer(context, CL_MEM_READ_ONLY, iter_m*k*sizeof(number), NULL, &errcode);
+    checkErr(errcode, "clCreateBufferA");
+
     if(nota) {
       // Load full consecutive rows of a
       if(k == lda) {
         // In this case, we can write it all in one call
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_m*k*sizeof(number), &a[i*dev_m*k], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA[i], CL_TRUE, 0, iter_m*k*sizeof(number), &a[i*dev_m*k], 0, NULL, NULL);
       }
       else {
         for(l=0; l<iter_m; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*k*sizeof(number), k*sizeof(number), &a[(i*dev_m+l)*lda], 0, NULL, NULL);
+          errcode = clEnqueueWriteBuffer(command_queues[i], memA[i], CL_TRUE, l*k*sizeof(number), k*sizeof(number), &a[(i*dev_m+l)*lda], 0, NULL, NULL);
         }
       }
     }
     else {
       // Load full consecutive columns of a
       for(l=0; l<k; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_m*sizeof(number), iter_m*sizeof(number), &a[l*lda+i*dev_m], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA[i], CL_TRUE, l*iter_m*sizeof(number), iter_m*sizeof(number), &a[l*lda+i*dev_m], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
+
+    memB[i] = clCreateBuffer(context, CL_MEM_READ_ONLY, k*n*sizeof(number), NULL, &errcode);
+    checkErr(errcode, "clCreateBufferB");
 
     if(notb) {
       // Load full consecutive rows of b
       if(n == ldb) {
         // In this case, we can write it all in one call
-        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, k*n*sizeof(number), b, 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB[i], CL_TRUE, 0, k*n*sizeof(number), b, 0, NULL, NULL);
       }
       else {
         for(l=0; l<k; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[l*ldb], 0, NULL, NULL);
+          errcode = clEnqueueWriteBuffer(command_queues[i], memB[i], CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[l*ldb], 0, NULL, NULL);
         }
       }
     }
     else {
       // Load full consecutive columns of b
       for(l=0; l<n; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*k*sizeof(number), k*sizeof(number), &b[l*ldb], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB[i], CL_TRUE, l*k*sizeof(number), k*sizeof(number), &b[l*ldb], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferB");
@@ -255,8 +257,8 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
     checkErr(clSetKernelArg(kernel, 3, sizeof(cl_int), &n), "clSetKernelArg3");
     checkErr(clSetKernelArg(kernel, 4, sizeof(cl_int), &k), "clSetKernelArg4");
     checkErr(clSetKernelArg(kernel, 5, sizeof(number), &alpha), "clSetKernelArg5");
-    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_mem), &memA), "clSetKernelArg6");
-    checkErr(clSetKernelArg(kernel, 7, sizeof(cl_mem), &memB), "clSetKernelArg8");
+    checkErr(clSetKernelArg(kernel, 6, sizeof(cl_mem), &memA[i]), "clSetKernelArg6");
+    checkErr(clSetKernelArg(kernel, 7, sizeof(cl_mem), &memB[i]), "clSetKernelArg8");
     checkErr(clSetKernelArg(kernel, 8, sizeof(number), &beta), "clSetKernelArg10");
     checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memC[i]), "clSetKernelArg11");
 
@@ -266,7 +268,6 @@ int opencl_xgemm(cl_int nota, cl_int notb, cl_int m, cl_int n, cl_int k, number 
 
   for(i=0; i < num_devices; i++) {
     iter_m = i == num_devices-1 ? last_dev_m : dev_m;
-    clFinish(command_queues[i]);
     if(n == ldc) {
       errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_m*n*sizeof(number), &c[i*dev_m*ldc], 0, NULL, NULL);
     }
@@ -454,8 +455,7 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   cl_context context;
   cl_device_id *devices;
   cl_command_queue *command_queues;
-  cl_mem memA, memB;
-  cl_mem *memC;
+  cl_mem *memA, *memB, *memC;
   cl_program program;
   cl_kernel kernel;
 
@@ -486,18 +486,14 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
   dev_row_a = left ? dev_row : 0;
   dev_row_b = left && (upper != nota) ? 0 : dev_row;
 
-  memA = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? last_dev_row : dim)*dim*sizeof(number), NULL, &errcode);
-  checkErr(errcode, "clCreateBufferA");
-
-  memB = clCreateBuffer(context, CL_MEM_READ_ONLY, (left ? dim : last_dev_row)*n*sizeof(number), NULL, &errcode);
-  checkErr(errcode, "clCreateBufferB");
-
   if(num_devices > 1 && left && (upper != nota)) {
     // Right (if lower) or bottom (if upper) part is full of zeros
     dim = dim - last_dev_row - dev_row_a*(num_devices-2);
   }
 
   command_queues = (cl_command_queue*) malloc(sizeof(cl_command_queue)*size_devices);
+  memA = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
+  memB = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   memC = (cl_mem *) malloc(sizeof(cl_mem)*num_devices);
   for(i=0; i < num_devices; i++) {
     iter_row = i == num_devices-1 ? last_dev_row : dev_row;
@@ -512,15 +508,18 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     command_queues[i] = clCreateCommandQueue(context, devices[i], NULL, &errcode);
     checkErr(errcode, "clCreateCommandQueue");
 
+    memA[i] = clCreateBuffer(context, CL_MEM_READ_ONLY, iter_row_a*dim*sizeof(number), NULL, &errcode);
+    checkErr(errcode, "clCreateBufferA");
+
     if(nota) {
       // Load full consecutive rows of a
       if(dim == lda) {
         // In this case, we can write it all in one call
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, 0, iter_row_a*dim*sizeof(number), &a[i*dev_row_a*dim], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA[i], CL_TRUE, 0, iter_row_a*dim*sizeof(number), &a[i*dev_row_a*dim], 0, NULL, NULL);
       }
       else {
         for(l=0; l<iter_row_a; l++) {
-          errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*dim*sizeof(number), dim*sizeof(number),
+          errcode = clEnqueueWriteBuffer(command_queues[i], memA[i], CL_TRUE, l*dim*sizeof(number), dim*sizeof(number),
                                          &a[(i*dev_row_a+l)*lda+upper*i*dev_row_a], 0, NULL, NULL);
         }
       }
@@ -528,20 +527,23 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     else {
       // Load full consecutive columns of a
       for(l=0; l<dim; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memA, CL_TRUE, l*iter_row_a*sizeof(number), iter_row_a*sizeof(number),
+        errcode = clEnqueueWriteBuffer(command_queues[i], memA[i], CL_TRUE, l*iter_row_a*sizeof(number), iter_row_a*sizeof(number),
                                        &a[(l+(upper ? 0 : i*dev_row_a))*lda+i*dev_row_a], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferA");
 
+    memB[i] = clCreateBuffer(context, CL_MEM_READ_ONLY, iter_row_b*n*sizeof(number), NULL, &errcode);
+    checkErr(errcode, "clCreateBufferB");
+
     // Load full consecutive rows of b
     if(n == ldb) {
       // In this case, we can write it all in one call
-      errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, 0, iter_row_b*n*sizeof(number), &b[i*dev_row_b*ldb], 0, NULL, NULL);
+      errcode = clEnqueueWriteBuffer(command_queues[i], memB[i], CL_TRUE, 0, iter_row_b*n*sizeof(number), &b[i*dev_row_b*ldb], 0, NULL, NULL);
     }
     else {
       for(l=0; l<iter_row_b; l++) {
-        errcode = clEnqueueWriteBuffer(command_queues[i], memB, CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[(i*dev_row_b+l)*ldb], 0, NULL, NULL);
+        errcode = clEnqueueWriteBuffer(command_queues[i], memB[i], CL_TRUE, l*n*sizeof(number), n*sizeof(number), &b[(i*dev_row_b+l)*ldb], 0, NULL, NULL);
       }
     }
     checkErr(errcode, "clEnqueueWriteBufferB");
@@ -558,8 +560,8 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
     checkErr(clSetKernelArg(kernel, 5, sizeof(cl_int), left ? &m : &iter_row), "clSetKernelArg5");
     checkErr(clSetKernelArg(kernel, 6, sizeof(cl_int), &n), "clSetKernelArg6");
     checkErr(clSetKernelArg(kernel, 7, sizeof(number), &alpha), "clSetKernelArg7");
-    checkErr(clSetKernelArg(kernel, 8, sizeof(cl_mem), &memA), "clSetKernelArg8");
-    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memB), "clSetKernelArg9");
+    checkErr(clSetKernelArg(kernel, 8, sizeof(cl_mem), &memA[i]), "clSetKernelArg8");
+    checkErr(clSetKernelArg(kernel, 9, sizeof(cl_mem), &memB[i]), "clSetKernelArg9");
     checkErr(clSetKernelArg(kernel, 10, sizeof(cl_mem), &memC[i]), "clSetKernelArg10");
 
     errcode = clEnqueueNDRangeKernel(command_queues[i], kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
@@ -568,7 +570,6 @@ void opencl_xtrmm(cl_int left, cl_int upper, cl_int nota, cl_int unit, cl_int ro
 
   for(i=0; i < num_devices; i++) {
     iter_row = i == num_devices-1 ? last_dev_row : dev_row;
-    clFinish(command_queues[i]);
     // Store the calculated values of C in B
     if(n == ldb) {
       errcode = clEnqueueReadBuffer(command_queues[i], memC[i], CL_TRUE, 0, iter_row*n*sizeof(number), &b[i*dev_row*ldb], 0, NULL, NULL);
